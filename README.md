@@ -59,17 +59,21 @@ cd api
 npm install
 cp .env.example .env      # then fill in DATABASE_URL
 
-npx prisma migrate dev    # create tables
-npm run seed              # create a dev owner and gym
+npm run db:migrate        # create tables
+npm run db:seed           # create a dev owner and gym
 
 npm run dev               # http://localhost:4000
 ```
 
 | Script | Purpose |
 |---|---|
-| `npm run dev` | Start with file watching |
+| `npm run dev` | Start with file watching (tsx) |
+| `npm run build` | `prisma generate` then compile to `dist/` |
+| `npm start` | Run the compiled server with plain node |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run seed` | Insert a development owner and gym |
+| `npm run db:migrate` | Create and apply a migration (development) |
+| `npm run db:deploy` | Apply pending migrations (production) |
+| `npm run db:seed` | Insert a development owner and gym |
 
 Health checks: `GET /health` (liveness), `GET /health/ready` (database reachable).
 

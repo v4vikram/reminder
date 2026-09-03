@@ -6,9 +6,15 @@
     "moduleResolution": "nodenext",
 
     // Prisma 7 emits its client as TypeScript source that imports with explicit
-    // .ts extensions (e.g. './enums.ts'), which requires both of these flags.
+    // .ts extensions (e.g. './enums.ts'). allowImportingTsExtensions permits
+    // that, and rewriteRelativeImportExtensions turns those specifiers into .js
+    // on the way out - without it, TypeScript refuses to emit at all.
     "allowImportingTsExtensions": true,
-    "noEmit": true,
+    "rewriteRelativeImportExtensions": true,
+
+    "outDir": "dist",
+    "rootDir": ".",
+    "sourceMap": true,
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -18,8 +24,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
 
-    "types": ["node"],
-    "outDir": "dist"
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "generated/**/*.ts", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
