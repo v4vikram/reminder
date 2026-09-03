@@ -53,3 +53,19 @@ export function deactivate(memberId: string) {
     data: { status: "INACTIVE" },
   });
 }
+
+/**
+ * Advances a member's due date inside an existing transaction.
+ *
+ * Exposed for the payments module: recording a payment and advancing the due
+ * date must commit together, so payments.service runs both through the same
+ * transaction client rather than reaching into Prisma directly. Crossing a
+ * module boundary goes through this door, per docs/adr/005.
+ */
+export function advanceDueDateTx(
+  tx: Prisma.TransactionClient,
+  memberId: string,
+  nextDueDate: Date,
+) {
+  return tx.member.update({ where: { id: memberId }, data: { nextDueDate } });
+}

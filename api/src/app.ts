@@ -1,6 +1,14 @@
 import express from "express";
 import { healthRouter } from "./modules/health/health.routes.ts";
 import { membersRouter } from "./modules/members/members.routes.ts";
+import {
+  gymPaymentsRouter,
+  memberPaymentsRouter,
+} from "./modules/payments/payments.routes.ts";
+import {
+  memberRemindersRouter,
+  remindersRouter,
+} from "./modules/reminders/reminders.routes.ts";
 import { authenticate } from "./shared/middlewares/authenticate.ts";
 import { tenantGuard } from "./shared/middlewares/tenantGuard.ts";
 import { errorHandler, notFoundHandler } from "./shared/middlewares/errorHandler.ts";
@@ -22,7 +30,12 @@ export function createApp() {
    */
   const gymScoped = express.Router({ mergeParams: true });
   gymScoped.use(authenticate, tenantGuard);
+
   gymScoped.use("/members", membersRouter);
+  gymScoped.use("/members/:memberId/payments", memberPaymentsRouter);
+  gymScoped.use("/members/:memberId/reminders", memberRemindersRouter);
+  gymScoped.use("/payments", gymPaymentsRouter);
+  gymScoped.use("/reminders", remindersRouter);
 
   v1.use("/gyms/:gymId", gymScoped);
   app.use("/api/v1", v1);
