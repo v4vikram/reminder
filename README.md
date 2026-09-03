@@ -27,13 +27,13 @@ real database except the live Google redirect itself, which needs a browser.
 | Gyms module | Done - onboarding and settings |
 | Authentication | Google OAuth + JWT; verified except the live Google round trip |
 | Dashboard summary | Done |
-| Frontend (web/) | Not started |
+| Frontend (web/) | Screens built: login, onboarding, dashboard, members, reminders, settings |
 
 ## Stack
 
 - **Backend** - Express 5, TypeScript, modular architecture
 - **Database** - PostgreSQL on Neon, Prisma 7 with the `adapter-pg` driver adapter
-- **Frontend** - Next.js + shadcn/ui *(not started)*
+- **Frontend** - Next.js 16 (App Router), React 19, Tailwind 4, shadcn/ui on Base UI
 
 Every non-obvious choice is recorded in [docs/adr](docs/adr/README.md).
 
@@ -81,9 +81,29 @@ api/
     modules/       one folder per feature (auth, gyms, members, payments,
                    reminders, dashboard)
     shared/        middleware, config, utilities
+web/
+  app/             routes; (app)/ is the authenticated shell
+  components/ui/   shadcn components
+  lib/             API client, auth context, formatters
 docs/
   adr/             architecture decision records
 ```
+
+## Running the frontend
+
+```bash
+cd web
+npm install
+cp .env.example .env.local     # NEXT_PUBLIC_API_URL
+npm run dev                    # http://localhost:3000
+```
+
+The API must be running too: the browser calls it directly, and `FRONTEND_URL`
+on the API side is the only origin its CORS policy allows.
+
+The interface is built for a phone held one-handed (requirements.md N1):
+navigation sits at the bottom, tap targets are at least 44px, and inputs stay at
+16px so iOS Safari does not zoom on focus.
 
 ## Authentication
 
@@ -99,3 +119,6 @@ in the Google Cloud Console credential, or the callback fails.
 - **No automated tests.** Everything has been verified by hand against a real
   database; none of that verification lives in the repository.
 - The live Google sign-in redirect has not been exercised end to end.
+- The frontend has been verified only by build, lint, typecheck and route
+  responses. No screen has been driven in a browser with a real session, so the
+  rendered UI and the wa.me hand-off are unproven.
