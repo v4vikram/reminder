@@ -120,6 +120,51 @@ Google Sign-In only, with stateless JWT sessions - see
 `GOOGLE_CALLBACK_URL` must be listed verbatim under "Authorized redirect URIs"
 in the Google Cloud Console credential, or the callback fails.
 
+## Deployment
+
+Two deployables from one repository (ADR 009). Neither needs a config file -
+the settings below live in each host's dashboard.
+
+### Frontend on Vercel
+
+Next.js is zero-config on Vercel, so there is no `vercel.json`.
+
+| Setting | Value |
+|---|---|
+| Root Directory | `web` |
+| Framework | Next.js (auto-detected) |
+| `NEXT_PUBLIC_API_URL` | `https://<your-api-host>/api/v1` |
+
+Security headers are set in `web/next.config.ts`, not at the platform, so they
+apply wherever the app is hosted.
+
+### API on Render or Railway
+
+| Setting | Value |
+|---|---|
+| Root Directory | `api` |
+| Build command | `npm install && npm run build` |
+| Start command | `npm start` |
+| Release / pre-deploy | `npm run db:deploy` |
+
+Environment variables: see `api/.env.example`. Two of them must match the
+deployed frontend, or sign-in breaks in ways that are easy to misdiagnose:
+
+- `FRONTEND_URL` - the Vercel domain. It is both the CORS allow-list and the
+  redirect target after Google sign-in.
+- `GOOGLE_CALLBACK_URL` - must be listed verbatim under **Authorized redirect
+  URIs** on the Google Cloud Console credential, alongside the localhost one.
+
+Use `db:deploy` (`prisma migrate deploy`) in production, never `db:migrate`:
+the latter is interactive and can prompt to reset the database.
+
+### Free-tier caveat
+
+Render's free tier sleeps a web service after 15 minutes of inactivity, so the
+first request afterwards takes roughly 30-50 seconds. Tolerable while validating,
+not once an owner is paying - see [ADR 001](docs/adr/001-separate-express-api.md).
+
+
 ## Known gaps
 
 - **No automated tests.** Everything has been verified by hand against a real
