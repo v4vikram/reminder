@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    // Prisma 7 emits its client as TypeScript source that imports with explicit
+    // .ts extensions (e.g. './enums.ts'), which requires both of these flags.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "types": ["node"],
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "generated/**/*.ts", "prisma.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
