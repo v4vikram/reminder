@@ -13,7 +13,8 @@ assumption is validated. See [ADR 007](docs/adr/007-manual-whatsapp-mvp.md).
 
 An incremental build. The core loop works end to end against a real database -
 see who is due, send a reminder, record payment, watch the due date advance.
-Authentication is still a stub, so this is not yet deployable.
+Google Sign-In has replaced the earlier stub, but the full browser flow has not
+been exercised yet.
 
 | Area | State |
 |---|---|
@@ -23,7 +24,8 @@ Authentication is still a stub, so this is not yet deployable.
 | Payments module | Done - transactional record + due-date advance |
 | Reminders module | Done - pending queue, wa.me links, send log |
 | Tenant isolation | Done - router-level guard, verified |
-| Authentication | **Stub** - real Google Sign-In pending |
+| Gyms module | Done - onboarding and settings |
+| Authentication | Google OAuth + JWT written; **end-to-end flow not yet run** |
 | Dashboard summary | Not started |
 | Frontend (web/) | Not started |
 
@@ -76,15 +78,17 @@ Health checks: `GET /health` (liveness), `GET /health/ready` (database reachable
 api/
   prisma/          schema, migrations, seed
   src/
-    modules/       one folder per feature (members, payments, reminders, health)
+    modules/       one folder per feature (auth, gyms, members, payments, reminders)
     shared/        middleware, config, utilities
 docs/
   adr/             architecture decision records
 ```
 
-## A note on the authentication stub
+## Authentication
 
-`src/shared/middlewares/authenticate.ts` currently treats the first user in the
-database as the caller, so the rest of the API can be exercised before Google
-OAuth is configured. It refuses to run when `NODE_ENV=production`, so deploying
-it by accident fails loudly instead of letting everyone in.
+Google Sign-In only, with stateless JWT sessions - see
+[ADR 006](docs/adr/006-google-signin-only.md) and
+[ADR 010](docs/adr/010-stateless-jwt-sessions.md).
+
+`GOOGLE_CALLBACK_URL` must be listed verbatim under "Authorized redirect URIs"
+in the Google Cloud Console credential, or the callback fails.

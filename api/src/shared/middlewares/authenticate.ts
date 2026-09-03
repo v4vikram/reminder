@@ -1,41 +1,23 @@
 import type { RequestHandler } from "express";
 import { ApiError } from "../utils/apiError.ts";
-import { isProduction } from "../config/env.ts";
-import { prisma } from "../config/prisma.ts";
+import { verifyToken } from "../utils/jwt.ts";
 
 /**
- * STUB - real authentication is not implemented yet.
+ * Verifies the bearer token and attaches the caller to the request.
  *
- * Google Sign-In (docs/adr/006) needs an OAuth consent screen configured in
- * Google Cloud Console, which is a manual setup step. Until that exists this
- * stub treats the first user in the database as the caller, so the members
- * module can be exercised end to end.
- *
- * It deliberately fails in production: if this is ever deployed by accident,
- * the app refuses the request rather than silently letting everyone in.
+ * Only the token is trusted here; nothing is read from the database, so this
+ * stays a constant-cost check. Whether the user still exists is confirmed
+ * where it matters - tenantGuard resolves the gym and its owner anyway.
  */
 export const authenticate: RequestHandler = async (req, _res, next) => {
-  if (isProduction) {
-    next(
-      new ApiError(
-        "INTERNAL_ERROR",
-        "The authentication stub cannot run in production; implement real Google Sign-In first",
-      ),
-    );
+  const header = req.headers.authorization;
+
+  if (!header?.startsWith("Bearer ")) {
+    next(ApiError.unauthorized("Missing Bearer token"));
     return;
   }
 
-  const user = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
-
-  if (!user) {
-    next(
-      ApiError.unauthorized(
-        "No user exists in the database. Seed one before using the authentication stub.",
-      ),
-    );
-    return;
-  }
-
-  req.user = { id: user.id, email: user.email };
+  const claims = await verifyToken(header.slice("Bearer ".length).trim());
+  req.user = { id: claims.userId, email: claims.email };
   next();
 };
