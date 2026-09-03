@@ -14,7 +14,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_CALLBACK_URL: z.url(),
 
-  /** Where the callback sends the browser once a token has been issued. */
+  /**
+   * Where the callback sends the browser once a token has been issued, and
+   * the only origin allowed to call this API from a browser.
+   */
   FRONTEND_URL: z.url(),
 
   // Short secrets are the usual cause of forgeable tokens, so refuse them here

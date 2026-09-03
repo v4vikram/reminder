@@ -13,8 +13,8 @@ assumption is validated. See [ADR 007](docs/adr/007-manual-whatsapp-mvp.md).
 
 An incremental build. The core loop works end to end against a real database -
 see who is due, send a reminder, record payment, watch the due date advance.
-Google Sign-In has replaced the earlier stub, but the full browser flow has not
-been exercised yet.
+Google Sign-In has replaced the earlier stub. Everything is verified against a
+real database except the live Google redirect itself, which needs a browser.
 
 | Area | State |
 |---|---|
@@ -25,8 +25,8 @@ been exercised yet.
 | Reminders module | Done - pending queue, wa.me links, send log |
 | Tenant isolation | Done - router-level guard, verified |
 | Gyms module | Done - onboarding and settings |
-| Authentication | Google OAuth + JWT written; **end-to-end flow not yet run** |
-| Dashboard summary | Not started |
+| Authentication | Google OAuth + JWT; verified except the live Google round trip |
+| Dashboard summary | Done |
 | Frontend (web/) | Not started |
 
 ## Stack
@@ -78,7 +78,8 @@ Health checks: `GET /health` (liveness), `GET /health/ready` (database reachable
 api/
   prisma/          schema, migrations, seed
   src/
-    modules/       one folder per feature (auth, gyms, members, payments, reminders)
+    modules/       one folder per feature (auth, gyms, members, payments,
+                   reminders, dashboard)
     shared/        middleware, config, utilities
 docs/
   adr/             architecture decision records
@@ -92,3 +93,9 @@ Google Sign-In only, with stateless JWT sessions - see
 
 `GOOGLE_CALLBACK_URL` must be listed verbatim under "Authorized redirect URIs"
 in the Google Cloud Console credential, or the callback fails.
+
+## Known gaps
+
+- **No automated tests.** Everything has been verified by hand against a real
+  database; none of that verification lives in the repository.
+- The live Google sign-in redirect has not been exercised end to end.
