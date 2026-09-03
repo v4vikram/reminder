@@ -1,65 +1,62 @@
 "use client";
 
 import { useState } from "react";
-import { BellIcon, CheckIcon, MessageCircleIcon } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { BellIcon } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
-import { formatDate, formatPhone, formatRelativeDate, formatRupees } from "@/lib/format";
-import { useResource } from "@/lib/use-resource";
-import type { PendingReminder } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useSession } from "@/features/auth/queries";
+import { useLogReminder, usePendingReminders } from "@/features/reminders/queries";
+import { PendingReminderCard } from "@/features/reminders/components/pending-reminder-card";
+import type { PendingFilter, PendingReminder } from "@/features/reminders/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-type Filter = "all" | "overdue" | "due_soon";
 
 /**
  * The core screen of the MVP.
  *
  * The server hands back a ready-made message and wa.me link for each member
- * (ADR 007), so this page only opens the link and reports back that a reminder
- * went out. When Phase 1 automates sending, this screen keeps working - it just
- * stops being the only way reminders happen.
+ * (ADR 007); this page only opens the link and reports the send back. When
+ * Phase 1 automates sending, the screen keeps working - it just stops being the
+ * only way reminders happen.
  */
 export default function RemindersPage() {
-  const { activeGym } = useAuth();
+  const { activeGym } = useSession();
   const gymId = activeGym!.id;
-  const [filter, setFilter] = useState<Filter>("all");
-  const [sending, setSending] = useState<string | null>(null);
+  const [filter, setFilter] = useState<PendingFilter>("all");
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
-  const { data, loading, reload } = useResource<PendingReminder[]>(
-    () => api.get<PendingReminder[]>(`/gyms/${gymId}/reminders/pending`, { dueFilter: filter }),
-    `pending:${gymId}:${filter}`,
-  );
+  const { data, isPending } = usePendingReminders(gymId, filter);
+  const logReminder = useLogReminder(gymId);
 
-  async function handleSend(item: PendingReminder) {
-    setSending(item.member.id);
+  function handleSend(item: PendingReminder) {
+    setSendingId(item.member.id);
 
-    // Open WhatsApp first, synchronously inside the click handler. Doing it
-    // after an await would make it a popup the browser blocks.
+    // Opened synchronously inside the click handler. After an await the browser
+    // treats it as an unrequested popup and blocks it.
     window.open(item.waLink, "_blank", "noopener,noreferrer");
 
-    try {
-      await api.post(`/gyms/${gymId}/members/${item.member.id}/reminders`, {
-        channel: "WHATSAPP_MANUAL",
-        status: "SENT",
-        messageText: item.messageText,
-      });
-      notify.success("Reminder logged", item.member.name);
-      await reload();
-    } catch (err) {
-      // The message may well have been sent even though logging failed, so this
-      // says what actually happened rather than claiming the send failed.
-      notify.error(
-        "Could not record the reminder",
-        err instanceof ApiError ? err.message : undefined,
-      );
-    } finally {
-      setSending(null);
-    }
+    logReminder.mutate(
+      {
+        memberId: item.member.id,
+        input: {
+          channel: "WHATSAPP_MANUAL",
+          status: "SENT",
+          messageText: item.messageText,
+        },
+      },
+      {
+        onSuccess: () => notify.success("Reminder logged", item.member.name),
+        // The message may well have been sent even though logging failed, so
+        // this says what actually happened rather than claiming a failed send.
+        onError: (err) =>
+          notify.error(
+            "Could not record the reminder",
+            err instanceof ApiError ? err.message : undefined,
+          ),
+        onSettled: () => setSendingId(null),
+      },
+    );
   }
 
   return (
@@ -71,7 +68,7 @@ export default function RemindersPage() {
         </p>
       </header>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as PendingFilter)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="overdue">Overdue</TabsTrigger>
@@ -79,15 +76,15 @@ export default function RemindersPage() {
         </TabsList>
       </Tabs>
 
-      {loading && (
+      {isPending ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-36 w-full rounded-xl" />
           ))}
         </div>
-      )}
+      ) : null}
 
-      {!loading && data?.length === 0 && (
+      {!isPending && data?.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
             <BellIcon className="size-8 text-muted-foreground" />
@@ -97,55 +94,16 @@ export default function RemindersPage() {
             </p>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <div className="space-y-3">
         {data?.map((item) => (
-          <Card key={item.member.id}>
-            <CardContent className="space-y-3 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{item.member.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatPhone(item.member.phone)}
-                  </p>
-                </div>
-                <Badge variant={item.member.dueStatus === "overdue" ? "destructive" : "default"}>
-                  {item.member.dueStatus === "overdue"
-                    ? `${item.member.daysOverdue}d overdue`
-                    : "Due soon"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Due {formatDate(item.member.nextDueDate)}
-                </span>
-                <span className="font-medium">{formatRupees(item.member.feeAmount)}</span>
-              </div>
-
-              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                {item.messageText}
-              </p>
-
-              <Button
-                onClick={() => handleSend(item)}
-                disabled={sending === item.member.id}
-                size="lg"
-                className="h-12 w-full"
-              >
-                <MessageCircleIcon className="size-4" />
-                {item.lastRemindedAt ? "Dobara bhejo" : "WhatsApp pe bhejo"}
-              </Button>
-
-              {item.lastRemindedAt && (
-                <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                  <CheckIcon className="size-3" />
-                  Last reminder {formatRelativeDate(item.lastRemindedAt)}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <PendingReminderCard
+            key={item.member.id}
+            item={item}
+            onSend={handleSend}
+            sending={sendingId === item.member.id}
+          />
         ))}
       </div>
     </div>

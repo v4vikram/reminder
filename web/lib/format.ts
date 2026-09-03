@@ -1,4 +1,9 @@
-import type { DueStatus } from "./types";
+/**
+ * Generic formatters, shared across features.
+ *
+ * Anything specific to one feature - what a due status is called, which badge
+ * colour it gets - belongs in that feature's utils.ts instead.
+ */
 
 /** Indian numbering, e.g. 1,20,000 - the format gym owners actually read. */
 export function formatRupees(amount: number): string {
@@ -15,8 +20,7 @@ export function formatDate(iso: string): string {
 }
 
 export function formatRelativeDate(iso: string): string {
-  const then = new Date(iso).getTime();
-  const days = Math.round((Date.now() - then) / 86_400_000);
+  const days = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
 
   if (days === 0) return "today";
   if (days === 1) return "yesterday";
@@ -31,16 +35,3 @@ export function formatPhone(e164: string): string {
   }
   return `+${e164}`;
 }
-
-export const dueStatusLabel: Record<DueStatus, string> = {
-  overdue: "Overdue",
-  due_soon: "Due soon",
-  upcoming: "Upcoming",
-};
-
-/** Badge variants, kept here so every screen labels due status identically. */
-export const dueStatusVariant: Record<DueStatus, "destructive" | "default" | "secondary"> = {
-  overdue: "destructive",
-  due_soon: "default",
-  upcoming: "secondary",
-};

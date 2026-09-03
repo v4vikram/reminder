@@ -4,18 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeftIcon, MessageCircleIcon, TrashIcon, WalletIcon } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
-import {
-  dueStatusLabel,
-  dueStatusVariant,
-  formatDate,
-  formatPhone,
-  formatRupees,
-} from "@/lib/format";
-import { useResource } from "@/lib/use-resource";
-import type { Member, Paginated, Payment, PaymentMethod } from "@/lib/types";
+import { formatDate, formatPhone, formatRupees } from "@/lib/format";
+import { useSession } from "@/features/auth/queries";
+import { useDeactivateMember, useMember } from "@/features/members/queries";
+import { dueStatusLabel, dueStatusVariant } from "@/features/members/utils";
+import { useMemberPayments, useRecordPayment } from "@/features/payments/queries";
+import type { PaymentMethod } from "@/features/payments/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +43,7 @@ import {
 const METHODS: PaymentMethod[] = ["CASH", "UPI", "CARD", "OTHER"];
 
 export default function MemberDetailPage() {
-  const { activeGym } = useAuth();
+  const { activeGym } = useSession();
   const router = useRouter();
   // useParams rather than the async `params` prop: this is a client component,
   // so the hook gives the value directly without unwrapping a promise.
@@ -55,45 +51,43 @@ export default function MemberDetailPage() {
   const gymId = activeGym!.id;
 
   const [method, setMethod] = useState<PaymentMethod>("CASH");
-  const [paying, setPaying] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const member = useResource<Member>(
-    () => api.get<Member>(`/gyms/${gymId}/members/${memberId}`),
-    `member:${gymId}:${memberId}`,
-  );
+  const member = useMember(gymId, memberId);
+  const payments = useMemberPayments(gymId, memberId);
+  const recordPayment = useRecordPayment(gymId, memberId);
+  const deactivate = useDeactivateMember(gymId);
 
-  const payments = useResource<Paginated<Payment>>(
-    () => api.get<Paginated<Payment>>(`/gyms/${gymId}/members/${memberId}/payments`),
-    `payments:${gymId}:${memberId}`,
-  );
-
-  async function recordPayment() {
-    setPaying(true);
-    try {
-      await api.post(`/gyms/${gymId}/members/${memberId}/payments`, { method });
-      notify.success("Payment recorded", "Due date aage badh gayi");
-      setSheetOpen(false);
-      // Both change: the member's due date advances and history gains a row.
-      await Promise.all([member.reload(), payments.reload()]);
-    } catch (err) {
-      notify.error(err instanceof ApiError ? err.message : "Could not record the payment");
-    } finally {
-      setPaying(false);
-    }
+  function handleRecordPayment() {
+    recordPayment.mutate(
+      { method },
+      {
+        onSuccess: () => {
+          notify.success("Payment recorded", "Due date aage badh gayi");
+          setSheetOpen(false);
+        },
+        onError: (err) =>
+          notify.error(
+            err instanceof ApiError ? err.message : "Could not record the payment",
+          ),
+      },
+    );
   }
 
-  async function deactivate() {
-    try {
-      await api.delete(`/gyms/${gymId}/members/${memberId}`);
-      notify.success("Member hata diya", "History safe hai");
-      router.replace("/members");
-    } catch (err) {
-      notify.error(err instanceof ApiError ? err.message : "Could not remove the member");
-    }
+  function handleDeactivate() {
+    deactivate.mutate(memberId, {
+      onSuccess: () => {
+        notify.success("Member hata diya", "History safe hai");
+        router.replace("/members");
+      },
+      onError: (err) =>
+        notify.error(
+          err instanceof ApiError ? err.message : "Could not remove the member",
+        ),
+    });
   }
 
-  if (member.loading) {
+  if (member.isPending) {
     return (
       <div className="space-y-4 px-4 pt-6">
         <Skeleton className="h-8 w-40" />
@@ -108,7 +102,9 @@ export default function MemberDetailPage() {
         <p className="text-sm text-muted-foreground">
           {member.error?.message ?? "Member not found"}
         </p>
-        <Button render={<Link href="/members" />} variant="outline" className="mt-4 h-12">Back to members</Button>
+        <Button nativeButton={false} render={<Link href="/members" />} variant="outline" className="mt-4 h-12">
+          Back to members
+        </Button>
       </div>
     );
   }
@@ -118,9 +114,15 @@ export default function MemberDetailPage() {
   return (
     <div className="space-y-4 px-4 pt-6">
       <header className="flex items-center gap-2">
-        <Button render={<Link href="/members" aria-label="Back to members" />} variant="ghost" size="icon" className="size-11 shrink-0">
-            <ChevronLeftIcon className="size-5" />
-          </Button>
+        <Button
+          nativeButton={false}
+          render={<Link href="/members" aria-label="Back to members" />}
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0"
+        >
+          <ChevronLeftIcon className="size-5" />
+        </Button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold tracking-tight">{m.name}</h1>
           <p className="text-sm text-muted-foreground">{formatPhone(m.phone)}</p>
@@ -148,9 +150,9 @@ export default function MemberDetailPage() {
       <div className="grid grid-cols-2 gap-3">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger render={<Button size="lg" className="h-12" />}>
-              <WalletIcon className="size-4" />
-              Paid
-            </SheetTrigger>
+            <WalletIcon className="size-4" />
+            Paid
+          </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-xl">
             <SheetHeader>
               <SheetTitle>Payment record karo</SheetTitle>
@@ -162,6 +164,8 @@ export default function MemberDetailPage() {
 
             <div className="space-y-2 px-4">
               <Label>Payment method</Label>
+              {/* Plain buttons rather than a toggle group: one tap, four large
+                  targets, and no dependence on an array-valued API. */}
               <div className="grid grid-cols-4 gap-2">
                 {METHODS.map((option) => (
                   <Button
@@ -178,23 +182,34 @@ export default function MemberDetailPage() {
             </div>
 
             <SheetFooter>
-              <Button onClick={recordPayment} disabled={paying} size="lg" className="h-12 w-full">
-                {paying ? <Spinner className="size-4" /> : null}
+              <Button
+                onClick={handleRecordPayment}
+                disabled={recordPayment.isPending}
+                size="lg"
+                className="h-12 w-full"
+              >
+                {recordPayment.isPending ? <Spinner className="size-4" /> : null}
                 Confirm payment
               </Button>
             </SheetFooter>
           </SheetContent>
         </Sheet>
 
-        <Button render={<Link href="/reminders" />} variant="outline" size="lg" className="h-12">
-            <MessageCircleIcon className="size-4" />
-            Reminder
-          </Button>
+        <Button
+          nativeButton={false}
+          render={<Link href="/reminders" />}
+          variant="outline"
+          size="lg"
+          className="h-12"
+        >
+          <MessageCircleIcon className="size-4" />
+          Reminder
+        </Button>
       </div>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Payment history</h2>
-        {payments.loading ? (
+        {payments.isPending ? (
           <Skeleton className="h-16 w-full rounded-xl" />
         ) : payments.data?.items.length === 0 ? (
           <Card>
@@ -226,10 +241,12 @@ export default function MemberDetailPage() {
       </section>
 
       <AlertDialog>
-        <AlertDialogTrigger render={<Button variant="ghost" className="h-12 w-full text-destructive" />}>
-            <TrashIcon className="size-4" />
-            Member hatao
-          </AlertDialogTrigger>
+        <AlertDialogTrigger
+          render={<Button variant="ghost" className="h-12 w-full text-destructive" />}
+        >
+          <TrashIcon className="size-4" />
+          Member hatao
+        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{m.name} ko hatana hai?</AlertDialogTitle>
@@ -240,7 +257,7 @@ export default function MemberDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="h-12">Rehne do</AlertDialogCancel>
-            <AlertDialogAction onClick={deactivate} className="h-12">
+            <AlertDialogAction onClick={handleDeactivate} className="h-12">
               Hatao
             </AlertDialogAction>
           </AlertDialogFooter>

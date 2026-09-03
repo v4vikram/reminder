@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { AuthProvider } from "@/lib/auth-context";
-import { Toaster } from "@/components/ui/toast";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Providers } from "@/lib/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,10 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased">
-        <AuthProvider>
-          <TooltipProvider delay={300}>{children}</TooltipProvider>
-        </AuthProvider>
-        <Toaster />
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

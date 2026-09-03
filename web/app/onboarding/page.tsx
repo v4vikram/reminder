@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
-import type { Gym } from "@/lib/types";
+import { ApiError } from "@/lib/api-client";
+import { notify } from "@/lib/notify";
+import { useSession } from "@/features/auth/queries";
+import { useCreateGym } from "@/features/gyms/queries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { notify } from "@/lib/notify";
 
 export default function OnboardingPage() {
-  const { status, gyms, refresh } = useAuth();
+  const { status, gyms } = useSession();
   const router = useRouter();
+  const createGym = useCreateGym();
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -25,26 +26,25 @@ export default function OnboardingPage() {
     else if (status === "authenticated" && gyms.length > 0) router.replace("/dashboard");
   }, [status, gyms.length, router]);
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setSaving(true);
     setErrors({});
 
-    try {
-      await api.post<Gym>("/gyms", {
-        name: name.trim(),
-        ...(phone.trim() ? { phone: phone.trim() } : {}),
-      });
-      await refresh();
-      router.replace("/dashboard");
-    } catch (err) {
-      if (err instanceof ApiError && err.details.length > 0) {
-        setErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
-      } else {
-        notify.error(err instanceof ApiError ? err.message : "Could not create the gym");
-      }
-      setSaving(false);
-    }
+    createGym.mutate(
+      { name: name.trim(), ...(phone.trim() ? { phone: phone.trim() } : {}) },
+      {
+        onSuccess: () => router.replace("/dashboard"),
+        onError: (err) => {
+          if (err instanceof ApiError && err.details.length > 0) {
+            setErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
+          } else {
+            notify.error(
+              err instanceof ApiError ? err.message : "Could not create the gym",
+            );
+          }
+        },
+      },
+    );
   }
 
   if (status !== "authenticated") {
@@ -78,7 +78,7 @@ export default function OnboardingPage() {
                   required
                   className="h-12 text-base"
                 />
-                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
               </div>
 
               <div className="space-y-2">
@@ -90,20 +90,19 @@ export default function OnboardingPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="98765 43210"
-                  // Brings up the numeric keypad without rejecting +, spaces or dashes.
                   inputMode="tel"
                   className="h-12 text-base"
                 />
-                {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+                {errors.phone ? <p className="text-sm text-destructive">{errors.phone}</p> : null}
               </div>
 
               <Button
                 type="submit"
                 size="lg"
                 className="h-12 w-full text-base"
-                disabled={saving || name.trim().length < 2}
+                disabled={createGym.isPending || name.trim().length < 2}
               >
-                {saving ? <Spinner className="size-4" /> : null}
+                {createGym.isPending ? <Spinner className="size-4" /> : null}
                 Continue
               </Button>
             </form>

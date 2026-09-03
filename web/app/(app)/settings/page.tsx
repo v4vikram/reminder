@@ -2,35 +2,37 @@
 
 import { useState } from "react";
 import { LogOutIcon } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/format";
-import type { Gym } from "@/lib/types";
+import { useSession, useSignOut } from "@/features/auth/queries";
+import { useUpdateGym } from "@/features/gyms/queries";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function SettingsPage() {
-  const { activeGym, user, refresh, signOut } = useAuth();
+  const { activeGym, user } = useSession();
   const gym = activeGym!;
+  const signOut = useSignOut();
+  const updateGym = useUpdateGym(gym.id);
   const [days, setDays] = useState(String(gym.reminderDaysBefore));
-  const [saving, setSaving] = useState(false);
 
-  async function saveDays() {
-    setSaving(true);
-    try {
-      await api.patch<Gym>(`/gyms/${gym.id}`, { reminderDaysBefore: Number(days) });
-      await refresh();
-      notify.success("Settings saved");
-    } catch (err) {
-      notify.error(err instanceof ApiError ? err.message : "Could not save settings");
-    } finally {
-      setSaving(false);
-    }
+  function save() {
+    updateGym.mutate(
+      { reminderDaysBefore: Number(days) },
+      {
+        onSuccess: () => notify.success("Settings saved"),
+        onError: (err) =>
+          notify.error(
+            err instanceof ApiError ? err.message : "Could not save settings",
+          ),
+      },
+    );
   }
 
   return (
@@ -59,10 +61,11 @@ export default function SettingsPage() {
               className="h-12 text-base"
             />
             <Button
-              onClick={saveDays}
-              disabled={saving || days === String(gym.reminderDaysBefore)}
+              onClick={save}
+              disabled={updateGym.isPending || days === String(gym.reminderDaysBefore)}
               className="h-12 shrink-0"
             >
+              {updateGym.isPending ? <Spinner className="size-4" /> : null}
               Save
             </Button>
           </div>

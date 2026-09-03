@@ -33,7 +33,8 @@ real database except the live Google redirect itself, which needs a browser.
 
 - **Backend** - Express 5, TypeScript, modular architecture
 - **Database** - PostgreSQL on Neon, Prisma 7 with the `adapter-pg` driver adapter
-- **Frontend** - Next.js 16 (App Router), React 19, Tailwind 4, shadcn/ui on Base UI
+- **Frontend** - Next.js 16 (App Router), React 19, Tailwind 4, shadcn/ui on Base UI,
+  React Query (server state), Zustand (client state), Axios
 
 Every non-obvious choice is recorded in [docs/adr](docs/adr/README.md).
 
@@ -82,9 +83,10 @@ api/
                    reminders, dashboard)
     shared/        middleware, config, utilities
 web/
-  app/             routes; (app)/ is the authenticated shell
+  app/             thin route files; (app)/ is the authenticated shell
+  features/        one folder per feature: api, queries, types, utils, components
   components/ui/   shadcn components
-  lib/             API client, auth context, formatters
+  lib/             axios client, query client, shared formatters
 docs/
   adr/             architecture decision records
 ```

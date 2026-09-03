@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboardIcon, UsersIcon, BellIcon, SettingsIcon } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useSession } from "@/features/auth/queries";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -20,10 +20,9 @@ const TABS = [
  *
  * Navigation sits at the bottom because this is used one-handed on a phone
  * (requirements.md N1) - the top of a 6" screen is out of thumb reach.
- * `pb-safe` padding keeps it clear of the iOS home indicator.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { status, gyms } = useAuth();
+  const { status, gyms } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -42,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      {/* Bottom nav is fixed, so content needs room to scroll past it. */}
+      {/* The bottom nav is fixed, so content needs room to scroll past it. */}
       <main className="flex-1 pb-24">{children}</main>
 
       <nav
