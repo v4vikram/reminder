@@ -1,0 +1,810 @@
+openapi: 3.1.0
+
+info:
+  title: Gym Fee Reminder API
+  version: 1.0.0
+  description: |
+    Chhote local gyms ke liye fee-reminder API.
+
+    Owner members add karta hai, system due dates track karta hai, aur reminders bhejta hai.
+    MVP me reminder manual hai (server `wa.me` link banata hai, owner tap karke bhejta hai);
+    Phase 1 me wahi endpoints automatic WhatsApp Cloud API sends ko serve karenge.
+
+    Design reasoning: `docs/api-contract.md` aur `docs/schema.md`.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local development
+  # Production server deploy hone pe yahan add hoga.
+
+tags:
+  - name: auth
+    description: Google Sign-In aur session
+  - name: gyms
+    description: Gym onboarding aur settings
+  - name: members
+    description: Member CRUD
+  - name: payments
+    description: Payment recording aur history
+  - name: reminders
+    description: Pending reminders aur send logging
+  - name: dashboard
+    description: Summary counts
+
+security:
+  - bearerAuth: []
+
+# ===========================================================================
+# PATHS
+# ===========================================================================
+
+paths:
+  # ------------------------------- auth -----------------------------------
+  /auth/google:
+    get:
+      operationId: startGoogleOAuth
+      tags: [auth]
+      summary: Google OAuth flow shuru karo
+      description: Browser ko Google ke consent screen pe redirect karta hai.
+      security: []
+      responses:
+        "302":
+          description: Google OAuth consent screen pe redirect
+
+  /auth/google/callback:
+    get:
+      operationId: handleGoogleCallback
+      tags: [auth]
+      summary: Google OAuth callback
+      description: |
+        Google se code receive karta hai, user ko find-or-create karta hai,
+        JWT issue karke frontend pe redirect karta hai.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "302":
+          description: Frontend pe redirect, token ke saath
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Current user aur uske gyms
+      description: |
+        Frontend isse app boot pe call karta hai. `gyms` khali ho to
+        onboarding screen dikhani hai (`POST /gyms`).
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        type: object
+                        required: [user, gyms]
+                        properties:
+                          user: { $ref: "#/components/schemas/User" }
+                          gyms:
+                            type: array
+                            items: { $ref: "#/components/schemas/Gym" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ------------------------------- gyms -----------------------------------
+  /gyms:
+    post:
+      operationId: createGym
+      tags: [gyms]
+      summary: Gym banao (first-login onboarding)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100, example: "Iron Fitness Gym" }
+                phone: { $ref: "#/components/schemas/PhoneNumber" }
+                address: { type: string, maxLength: 300 }
+      responses:
+        "201":
+          description: Gym ban gaya
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Gym" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /gyms/{gymId}:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: getGym
+      tags: [gyms]
+      summary: Gym details
+      responses:
+        "200":
+          description: Gym
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Gym" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateGym
+      tags: [gyms]
+      summary: Gym ya settings update karo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                phone: { $ref: "#/components/schemas/PhoneNumber" }
+                address: { type: string, maxLength: 300 }
+                reminderDaysBefore:
+                  type: integer
+                  minimum: 0
+                  maximum: 30
+                  description: Due date se kitne din pehle "due soon" maana jaye
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ------------------------------ members ---------------------------------
+  /gyms/{gymId}/members:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: Members list karo (filter + search + pagination)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [ACTIVE, INACTIVE] }
+          description: Default ACTIVE
+        - name: dueFilter
+          in: query
+          schema: { type: string, enum: [overdue, due_soon, upcoming] }
+          description: |
+            `nextDueDate` aur gym ke `reminderDaysBefore` se runtime pe derive hota hai.
+            Dekho docs/schema.md §6.
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
+          description: Naam ya phone pe partial match
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated members
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        allOf:
+                          - $ref: "#/components/schemas/PaginatedEnvelope"
+                          - properties:
+                              items:
+                                type: array
+                                items: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createMember
+      tags: [members]
+      summary: Naya member add karo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, feeAmount, joinDate]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100, example: "Rahul Sharma" }
+                phone: { $ref: "#/components/schemas/PhoneNumber" }
+                feeAmount: { type: number, minimum: 0, example: 500 }
+                joinDate: { type: string, format: date, example: "2026-09-01" }
+                nextDueDate:
+                  type: string
+                  format: date
+                  description: Optional — na do to `joinDate` + 1 month set hoti hai
+                notes: { type: string, maxLength: 500 }
+      responses:
+        "201":
+          description: Member ban gaya
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Member" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Is gym me ye phone number already registered hai
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /gyms/{gymId}/members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getMember
+      tags: [members]
+      summary: Ek member ki details
+      responses:
+        "200":
+          description: Member
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateMember
+      tags: [members]
+      summary: Member update karo
+      description: |
+        `nextDueDate` yahan se manually correct ki ja sakti hai (data entry galti ke liye).
+        Normal flow me ye payment record hone pe apne aap advance hoti hai.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                phone: { $ref: "#/components/schemas/PhoneNumber" }
+                feeAmount: { type: number, minimum: 0 }
+                nextDueDate: { type: string, format: date }
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+                notes: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Member" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deactivateMember
+      tags: [members]
+      summary: Member hatao (soft delete)
+      description: |
+        Row delete nahi hoti — `status = INACTIVE` set hota hai, taaki payment
+        history aur past reports intact rahein. Dekho docs/schema.md §3.7.
+      responses:
+        "204":
+          description: Member INACTIVE ho gaya
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ----------------------------- payments ---------------------------------
+  /gyms/{gymId}/members/{memberId}/payments:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+      - $ref: "#/components/parameters/MemberId"
+    post:
+      operationId: recordPayment
+      tags: [payments]
+      summary: Payment record karo ("mark as paid")
+      description: |
+        **Transactional.** Ek `Payment` row banati hai AUR `member.nextDueDate` ko
+        ek billing cycle aage badhati hai — dono ek hi transaction me.
+        Ye is system ka critical invariant hai; dekho docs/schema.md §4.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                  description: Optional — na do to member ka `feeAmount` use hota hai
+                paidAt:
+                  type: string
+                  format: date-time
+                  description: Optional — default abhi. Backdated entry ke liye
+                method: { type: string, enum: [CASH, UPI, CARD, OTHER], default: CASH }
+      responses:
+        "201":
+          description: Payment record ho gayi, due date advance ho gayi
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        type: object
+                        required: [payment, member]
+                        properties:
+                          payment: { $ref: "#/components/schemas/Payment" }
+                          member:
+                            allOf:
+                              - $ref: "#/components/schemas/Member"
+                            description: Updated member — nayi `nextDueDate` ke saath
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    get:
+      operationId: listMemberPayments
+      tags: [payments]
+      summary: Is member ki payment history
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated payments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        allOf:
+                          - $ref: "#/components/schemas/PaginatedEnvelope"
+                          - properties:
+                              items:
+                                type: array
+                                items: { $ref: "#/components/schemas/Payment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /gyms/{gymId}/payments:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: listGymPayments
+      tags: [payments]
+      summary: Poore gym ki payments (Phase 2 analytics ka base)
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated payments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        allOf:
+                          - $ref: "#/components/schemas/PaginatedEnvelope"
+                          - properties:
+                              items:
+                                type: array
+                                items: { $ref: "#/components/schemas/Payment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ----------------------------- reminders --------------------------------
+  /gyms/{gymId}/reminders/pending:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: listPendingReminders
+      tags: [reminders]
+      summary: Due members + ready-made wa.me links
+      description: |
+        **MVP ka core screen.** Har due member ke liye server hi message text aur
+        `wa.me` link bana ke deta hai — frontend ko koi formatting logic nahi
+        rakhna padta.
+
+        Phase 1 me yahi list cron consume karega, `waLink` ignore karke
+        WhatsApp Cloud API se bhejega. Endpoint same rehta hai.
+      parameters:
+        - name: dueFilter
+          in: query
+          schema: { type: string, enum: [overdue, due_soon, all], default: all }
+      responses:
+        "200":
+          description: Pending reminders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/PendingReminder" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /gyms/{gymId}/members/{memberId}/reminders:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+      - $ref: "#/components/parameters/MemberId"
+    post:
+      operationId: logReminder
+      tags: [reminders]
+      summary: Reminder bheja gaya — log karo
+      description: |
+        MVP: owner ke wa.me link tap karne ke baad frontend call karta hai
+        (`channel: WHATSAPP_MANUAL`).
+
+        Phase 1: cron API-send ke baad call karega (`channel: WHATSAPP_API`).
+        **Yahi endpoint, koi change nahi.**
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel]
+              properties:
+                channel: { type: string, enum: [WHATSAPP_MANUAL, WHATSAPP_API, SMS] }
+                status: { type: string, enum: [PENDING, SENT, FAILED], default: SENT }
+                messageText:
+                  type: string
+                  maxLength: 1000
+                  description: Jo text actually bheja gaya — template badalne pe history sahi rahe
+                failureReason: { type: string, maxLength: 500 }
+      responses:
+        "201":
+          description: Reminder log ho gaya
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Reminder" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /gyms/{gymId}/reminders:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: listReminders
+      tags: [reminders]
+      summary: Reminder history
+      parameters:
+        - name: memberId
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated reminders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        allOf:
+                          - $ref: "#/components/schemas/PaginatedEnvelope"
+                          - properties:
+                              items:
+                                type: array
+                                items: { $ref: "#/components/schemas/Reminder" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ---------------------------- dashboard ---------------------------------
+  /gyms/{gymId}/dashboard/summary:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard ke counts
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/DashboardSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+# ===========================================================================
+# COMPONENTS
+# ===========================================================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    GymId:
+      name: gymId
+      in: path
+      required: true
+      schema: { type: string }
+      description: Tenant guard middleware verify karta hai ki caller is gym ka owner hai
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema: { type: string }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  schemas:
+    # ---- envelopes ----
+    SuccessEnvelope:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, const: true }
+
+    ErrorEnvelope:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - NOT_FOUND
+                - CONFLICT
+                - INTERNAL_ERROR
+            message: { type: string }
+            details:
+              type: array
+              description: Field-level validation errors
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+
+    PaginatedEnvelope:
+      type: object
+      required: [items, page, limit, total, hasNext]
+      properties:
+        items: { type: array, items: {} }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        hasNext: { type: boolean }
+
+    # ---- primitives ----
+    PhoneNumber:
+      type: string
+      pattern: "^[1-9][0-9]{7,14}$"
+      description: |
+        E.164 bina '+' ke — jaise "919876543210".
+        Input pe normalize hota hai; `wa.me` links isi format pe bante hain.
+      example: "919876543210"
+
+    DueStatus:
+      type: string
+      enum: [overdue, due_soon, upcoming]
+      description: Stored nahi — `nextDueDate` + gym ke `reminderDaysBefore` se derive hota hai
+
+    # ---- resources ----
+    User:
+      type: object
+      required: [id, email, name, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        avatarUrl: { type: string, format: uri }
+        createdAt: { type: string, format: date-time }
+
+    Gym:
+      type: object
+      required: [id, name, plan, reminderDaysBefore, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        phone: { $ref: "#/components/schemas/PhoneNumber" }
+        address: { type: string }
+        plan: { type: string, enum: [TRIAL, FREE, PAID] }
+        monthlyPrice: { type: number }
+        trialEndsAt: { type: string, format: date-time }
+        reminderDaysBefore: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Member:
+      type: object
+      required: [id, gymId, name, phone, feeAmount, joinDate, nextDueDate, status, dueStatus]
+      properties:
+        id: { type: string }
+        gymId: { type: string }
+        name: { type: string }
+        phone: { $ref: "#/components/schemas/PhoneNumber" }
+        feeAmount: { type: number, example: 500 }
+        joinDate: { type: string, format: date }
+        nextDueDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        dueStatus: { $ref: "#/components/schemas/DueStatus" }
+        daysOverdue:
+          type: integer
+          description: Positive tabhi jab `dueStatus` overdue ho
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Payment:
+      type: object
+      required: [id, gymId, memberId, amount, paidAt, method]
+      properties:
+        id: { type: string }
+        gymId: { type: string }
+        memberId: { type: string }
+        amount: { type: number, example: 500 }
+        paidAt: { type: string, format: date-time }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        method: { type: string, enum: [CASH, UPI, CARD, OTHER] }
+        recordedById: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    Reminder:
+      type: object
+      required: [id, gymId, memberId, channel, status, createdAt]
+      properties:
+        id: { type: string }
+        gymId: { type: string }
+        memberId: { type: string }
+        channel: { type: string, enum: [WHATSAPP_MANUAL, WHATSAPP_API, SMS] }
+        status: { type: string, enum: [PENDING, SENT, FAILED] }
+        messageText: { type: string }
+        sentAt: { type: string, format: date-time }
+        failureReason: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    PendingReminder:
+      type: object
+      description: Ek due member + uska ready-to-send message aur link
+      required: [member, messageText, waLink]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+        messageText:
+          type: string
+          example: "Namaste Rahul Sharma, Iron Fitness Gym ki membership fees ₹500 05/09/2026 ko due hai. Kripya time pe jama karein. Dhanyavaad!"
+        waLink:
+          type: string
+          format: uri
+          description: URL-encoded text ke saath pre-filled WhatsApp link
+          example: "https://wa.me/919876543210?text=Namaste%20Rahul..."
+        lastRemindedAt:
+          type: string
+          format: date-time
+          description: Aakhri baar kab reminder gaya — repeat spam se bachne ke liye
+
+    DashboardSummary:
+      type: object
+      required: [totalMembers, activeMembers, dueToday, overdue, collectedThisMonth]
+      properties:
+        totalMembers: { type: integer }
+        activeMembers: { type: integer }
+        dueToday: { type: integer }
+        dueSoon: { type: integer }
+        overdue: { type: integer }
+        collectedThisMonth: { type: number, example: 24500 }
+        pendingAmount:
+          type: number
+          description: Overdue members ke fees ka total
+
+  responses:
+    ValidationError:
+      description: Request body ya params invalid
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Unauthorized:
+      description: Token missing ya invalid
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Forbidden:
+      description: Caller is gym ka owner nahi hai
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    NotFound:
+      description: Resource nahi mila
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
