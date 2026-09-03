@@ -11,17 +11,21 @@ assumption is validated. See [ADR 007](docs/adr/007-manual-whatsapp-mvp.md).
 
 ## Status
 
-Round 3 of an incremental build. The members module works end to end against a
-real database; authentication is still a stub.
+An incremental build. The core loop works end to end against a real database -
+see who is due, send a reminder, record payment, watch the due date advance.
+Authentication is still a stub, so this is not yet deployable.
 
 | Area | State |
 |---|---|
 | Database schema + migration | Done |
 | API contract (OpenAPI 3.1) | Done |
 | Members module | Done - CRUD, filters, search, soft delete |
+| Payments module | Done - transactional record + due-date advance |
+| Reminders module | Done - pending queue, wa.me links, send log |
 | Tenant isolation | Done - router-level guard, verified |
 | Authentication | **Stub** - real Google Sign-In pending |
-| Reminders / payments / dashboard | Not started |
+| Dashboard summary | Not started |
+| Frontend (web/) | Not started |
 
 ## Stack
 
@@ -72,7 +76,7 @@ Health checks: `GET /health` (liveness), `GET /health/ready` (database reachable
 api/
   prisma/          schema, migrations, seed
   src/
-    modules/       one folder per feature (members, health)
+    modules/       one folder per feature (members, payments, reminders, health)
     shared/        middleware, config, utilities
 docs/
   adr/             architecture decision records

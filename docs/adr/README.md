@@ -20,6 +20,7 @@ Har ADR immutable hai. Decision badle to purana ADR `Superseded` mark karke naya
 | [006](006-google-signin-only.md) | Sirf Google Sign-In, phone OTP defer | Accepted |
 | [007](007-manual-whatsapp-mvp.md) | MVP me manual `wa.me`, WhatsApp Cloud API defer | Accepted |
 | [008](008-tenant-isolation.md) | `gymId` URL me + tenant guard middleware | Accepted |
+| [009](009-monorepo.md) | Frontend aur backend ek hi repo me | Accepted |
 
 ## Template
 
