@@ -1,0 +1,194 @@
+// Gym Fee Reminder - Prisma schema
+//
+// Design reasoning and trade-offs are documented in docs/schema.md.
+// Core principle: every tenant-scoped table carries `gymId` from day one.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum GymPlan {
+  TRIAL
+  FREE
+  PAID
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  OTHER
+}
+
+/// Only WHATSAPP_MANUAL is used in the MVP, where the owner taps a wa.me link.
+/// Phase 1 adds WHATSAPP_API with no schema change.
+enum ReminderChannel {
+  WHATSAPP_MANUAL
+  WHATSAPP_API
+  SMS
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// Gym owner, created through Google Sign-In. No password is ever stored.
+model User {
+  id        String   @id @default(cuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gyms             Gym[]
+  recordedPayments Payment[] @relation("RecordedPayments")
+
+  @@map("users")
+}
+
+/// The tenant root. Every tenant-scoped table joins back to this via `gymId`.
+/// Kept separate from User so one owner can hold multiple gyms in Phase 4.
+model Gym {
+  id      String  @id @default(cuid())
+  ownerId String
+  name    String
+  phone   String?
+  address String?
+
+  // Plan and settings live as data, not hardcoded in application code, so a
+  // tier or trial change is an UPDATE rather than a deploy.
+  plan               GymPlan   @default(TRIAL)
+  monthlyPrice       Decimal?  @db.Decimal(10, 2)
+  trialEndsAt        DateTime?
+  /// How many days before the due date a member counts as "due soon".
+  reminderDaysBefore Int       @default(3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members   Member[]
+  payments  Payment[]
+  reminders Reminder[]
+
+  @@index([ownerId])
+  @@map("gyms")
+}
+
+model Member {
+  id    String @id @default(cuid())
+  gymId String
+  name  String
+
+  /// E.164 without the leading '+', e.g. "919876543210".
+  /// wa.me links expect exactly this format, so it is normalised on input
+  /// and stored that way rather than re-derived at every use.
+  phone String
+
+  feeAmount Decimal  @db.Decimal(10, 2)
+  joinDate  DateTime @db.Date
+
+  /// Denormalised rather than derived from payment history: it turns the core
+  /// dashboard query ("who is due today") into a single index scan. Advanced
+  /// inside the same transaction that records a payment.
+  nextDueDate DateTime @db.Date
+
+  status MemberStatus @default(ACTIVE)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gym       Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+  reminders Reminder[]
+
+  /// A phone number cannot be registered twice within the same gym.
+  @@unique([gymId, phone])
+  /// Core dashboard query: filter and sort by due date within one gym.
+  @@index([gymId, nextDueDate])
+  @@index([gymId, status])
+  @@map("members")
+}
+
+/// An immutable payment record. Marking a member as paid writes one of these
+/// rather than flipping a flag, which preserves the audit trail and gives
+/// Phase 2 analytics something to build on.
+model Payment {
+  id       String   @id @default(cuid())
+  gymId    String
+  memberId String
+  amount   Decimal  @db.Decimal(10, 2)
+  paidAt   DateTime @default(now())
+
+  /// The billing period this payment covers.
+  periodStart DateTime? @db.Date
+  periodEnd   DateTime? @db.Date
+
+  method       PaymentMethod @default(CASH)
+  recordedById String
+  createdAt    DateTime      @default(now())
+
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Restrict, not Cascade: a user cannot be hard-deleted while payment records
+  /// reference them. Account deletion should be a deliberate flow that
+  /// anonymises records, not a silent side effect of a cascade.
+  recordedBy User @relation("RecordedPayments", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([gymId, paidAt])
+  @@index([memberId, paidAt])
+  @@index([recordedById])
+  @@map("payments")
+}
+
+/// Persistence for the sendReminder() abstraction.
+///
+/// MVP: channel = WHATSAPP_MANUAL, written after the owner taps a wa.me link.
+/// Phase 1: channel = WHATSAPP_API, written after a cron-triggered API send.
+/// Same table, same shape, no migration.
+model Reminder {
+  id       String @id @default(cuid())
+  gymId    String
+  memberId String
+
+  channel ReminderChannel
+  status  ReminderStatus  @default(PENDING)
+
+  /// The text actually sent, so history stays accurate when the template changes.
+  messageText   String?
+  sentAt        DateTime?
+  failureReason String?
+
+  createdAt DateTime @default(now())
+
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, createdAt])
+  @@index([memberId, createdAt])
+  @@map("reminders")
+}

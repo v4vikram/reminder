@@ -1,0 +1,10 @@
+node_modules/
+
+# Environment variables: .env.example is committed, .env is not
+.env
+.env.local
+
+# Prisma 7 generates the client here (generator.output)
+/generated/
+
+dist/
