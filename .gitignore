@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Environment variables: *.example files are committed, real ones never are
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Generated code (Prisma client is generated from schema.prisma)
+generated/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
