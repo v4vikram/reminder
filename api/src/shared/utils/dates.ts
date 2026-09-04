@@ -83,3 +83,54 @@ export function daysOverdue(nextDueDate: Date, now: Date = today()): number {
   const diff = daysBetween(now, nextDueDate);
   return diff < 0 ? Math.abs(diff) : 0;
 }
+
+/**
+ * Whole months elapsed between two dates.
+ *
+ * The day-of-month check matters: 20 Jun to 4 Sep is two complete months, not
+ * three, because the 20th of September has not arrived yet.
+ */
+export function monthsElapsed(from: Date, to: Date): number {
+  const a = toDateOnly(from);
+  const b = toDateOnly(to);
+
+  let months =
+    (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth());
+  if (b.getUTCDate() < a.getUTCDate()) months -= 1;
+  return months;
+}
+
+export interface PendingPeriod {
+  /** Number of due dates that have passed unpaid. */
+  months: number;
+  /** First day of the unpaid span. */
+  from: Date;
+  /** Last day of the unpaid span. */
+  to: Date;
+}
+
+/**
+ * How far behind a member is, as a span rather than a single date.
+ *
+ * A member three months behind owes three months, not one. Reporting only
+ * `nextDueDate` and a single month's fee understated what the gym was owed and
+ * gave the owner no way to see which period the arrears covered.
+ *
+ * Returns null when nothing is overdue.
+ */
+export function pendingPeriod(
+  nextDueDate: Date,
+  now: Date = today(),
+): PendingPeriod | null {
+  const due = toDateOnly(nextDueDate);
+  if (due >= toDateOnly(now)) return null;
+
+  // The due date itself has passed, so that period counts - hence the +1.
+  const months = monthsElapsed(due, now) + 1;
+
+  return {
+    months,
+    from: due,
+    to: addDays(addMonths(due, months), -1),
+  };
+}

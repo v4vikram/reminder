@@ -14,7 +14,8 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function NewMemberPage() {
   const { activeGym } = useSession();
   const router = useRouter();
-  const createMember = useCreateMember(activeGym!.id);
+  const gymId = activeGym!.id;
+  const createMember = useCreateMember(gymId);
 
   return (
     <div className="px-4 pt-6">
@@ -34,6 +35,7 @@ export default function NewMemberPage() {
       <Card>
         <CardContent className="py-5">
           <MemberForm
+            gymId={gymId}
             submitting={createMember.isPending}
             error={createMember.error}
             onSubmit={(input) =>

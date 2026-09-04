@@ -1,4 +1,5 @@
 import type { Gym, Member } from "../../../generated/prisma/client.ts";
+import { pendingPeriod, today } from "../../shared/utils/dates.ts";
 
 /**
  * The reminder message sent to gym members.
@@ -14,18 +15,57 @@ import type { Gym, Member } from "../../../generated/prisma/client.ts";
  * Phase 1 will move this into a per-gym MessageTemplate table
  * (docs/schema.md §7); a module-level constant is enough while it is fixed.
  */
-export function buildReminderMessage(member: Member, gym: Gym, dueDate: Date): string {
-  const amount = Number(member.feeAmount).toLocaleString("en-IN");
-  const date = dueDate.toLocaleDateString("en-GB", {
+
+function formatAmount(amount: number): string {
+  return `Rs.${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+export function buildReminderMessage(
+  member: Member,
+  gym: Gym,
+  dueDate: Date,
+  now: Date = today(),
+): string {
+  const fee = member.feeAmount === null ? null : Number(member.feeAmount);
+  const pending = pendingPeriod(dueDate, now);
+
+  // Someone several months behind owes several months. Naming one month's fee
+  // and one due date understated the debt and gave the member no idea which
+  // period was outstanding.
+  if (pending && pending.months > 1) {
+    const total = fee === null ? null : fee * pending.months;
+    const span = `${formatDate(pending.from)} se ${formatDate(pending.to)} tak`;
+
+    return (
+      `Namaste ${member.name}, ${gym.name} ki membership fees ` +
+      `${pending.months} mahine se pending hai (${span})` +
+      `${total === null ? "" : ` - kul ${formatAmount(total)}`}. ` +
+      `Kripya jaldi jama karein. Dhanyavaad!`
+    );
+  }
+
+  const amountPart = fee === null ? "" : ` ${formatAmount(fee)}`;
+
+  if (pending) {
+    return (
+      `Namaste ${member.name}, ${gym.name} ki membership fees${amountPart} ` +
+      `${formatDate(dueDate)} ko due thi aur abhi tak pending hai. ` +
+      `Kripya jaldi jama karein. Dhanyavaad!`
+    );
+  }
 
   return (
-    `Namaste ${member.name}, ${gym.name} ki membership fees Rs.${amount} ` +
-    `${date} ko due hai. Kripya time pe jama karein. Dhanyavaad!`
+    `Namaste ${member.name}, ${gym.name} ki membership fees${amountPart} ` +
+    `${formatDate(dueDate)} ko due hai. Kripya time pe jama karein. Dhanyavaad!`
   );
 }
 

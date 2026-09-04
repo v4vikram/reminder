@@ -33,6 +33,8 @@ tags:
     description: Pending reminders aur send logging
   - name: dashboard
     description: Summary counts
+  - name: fee-plans
+    description: Gym price tiers, used for quick-select buttons
 
 security:
   - bearerAuth: []
@@ -254,7 +256,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, phone, feeAmount, joinDate]
+              required: [name, phone, joinDate]
               properties:
                 name: { type: string, minLength: 2, maxLength: 100, example: "Rahul Sharma" }
                 phone: { $ref: "#/components/schemas/PhoneNumber" }
@@ -370,6 +372,14 @@ paths:
             schema:
               type: object
               properties:
+                months:
+                  type: integer
+                  minimum: 1
+                  maximum: 36
+                  default: 1
+                  description: |
+                    Members often clear several months at once, so the due date
+                    advances by this many rather than always one.
                 amount:
                   type: number
                   minimum: 0
@@ -567,6 +577,109 @@ paths:
                                 items: { $ref: "#/components/schemas/Reminder" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  # ---------------------------- fee plans ---------------------------------
+  /gyms/{gymId}/fee-plans:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+    get:
+      tags: [fee-plans]
+      summary: Gym ke price tiers, shortest duration first
+      responses:
+        "200":
+          description: Fee plans
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/FeePlan" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [fee-plans]
+      summary: Naya tier banao
+      description: |
+        Bundles are usually discounted, so amount is NOT months x monthly rate -
+        it is whatever the owner charges for that duration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [months, amount]
+              properties:
+                months: { type: integer, minimum: 1, maximum: 36, example: 2 }
+                amount: { type: number, minimum: 0, example: 700 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/FeePlan" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A plan for this duration already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /gyms/{gymId}/fee-plans/{planId}:
+    parameters:
+      - $ref: "#/components/parameters/GymId"
+      - name: planId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [fee-plans]
+      summary: Tier update karo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                months: { type: integer, minimum: 1, maximum: 36 }
+                amount: { type: number, minimum: 0 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - properties:
+                      data: { $ref: "#/components/schemas/FeePlan" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: A plan for this duration already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    delete:
+      tags: [fee-plans]
+      summary: Tier hatao
+      description: |
+        Hard delete is safe: a plan is a shortcut for entering figures, not a
+        record. Payments store their own amount and month count.
+      responses:
+        "204":
+          description: Deleted
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # ---------------------------- dashboard ---------------------------------
   /gyms/{gymId}/dashboard/summary:
     parameters:
@@ -705,6 +818,38 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    FeePlan:
+      type: object
+      description: |
+        A gym price tier. Bundles are usually discounted, so amount is not
+        months x monthly rate - it is whatever the owner charges.
+      required: [id, months, amount]
+      properties:
+        id: { type: string }
+        months: { type: integer, example: 2 }
+        amount: { type: number, example: 700 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Pending:
+      type: object
+      description: |
+        Arrears as a span rather than a single date. A member three months
+        behind owes three months; reporting one due date and one month's fee
+        understated it. Null when nothing is overdue.
+      required: [months, from, to]
+      properties:
+        months:
+          type: integer
+          description: How many due dates have passed unpaid
+          example: 3
+        from: { type: string, format: date, description: First day of the unpaid span }
+        to: { type: string, format: date, description: Last day of the unpaid span }
+        amount:
+          type: [number, "null"]
+          description: months x feeAmount, or null when no fee is set
+          example: 1200
+
     Member:
       type: object
       required: [id, gymId, name, phone, feeAmount, joinDate, nextDueDate, status, dueStatus]
@@ -713,7 +858,10 @@ components:
         gymId: { type: string }
         name: { type: string }
         phone: { $ref: "#/components/schemas/PhoneNumber" }
-        feeAmount: { type: number, example: 500 }
+        feeAmount:
+          type: [number, "null"]
+          description: Null when no fee has been agreed for this member yet
+          example: 500
         joinDate: { type: string, format: date }
         nextDueDate: { type: string, format: date }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
@@ -721,6 +869,10 @@ components:
         daysOverdue:
           type: integer
           description: Positive tabhi jab `dueStatus` overdue ho
+        pending:
+          oneOf:
+            - $ref: "#/components/schemas/Pending"
+            - type: "null"
         notes: { type: string }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -732,7 +884,11 @@ components:
         id: { type: string }
         gymId: { type: string }
         memberId: { type: string }
-        amount: { type: number, example: 500 }
+        amount: { type: number, example: 700 }
+        months:
+          type: integer
+          description: How many months this payment covered
+          example: 2
         paidAt: { type: string, format: date-time }
         periodStart: { type: string, format: date }
         periodEnd: { type: string, format: date }

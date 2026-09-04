@@ -1,6 +1,6 @@
 import type { Gym } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../shared/config/prisma.ts";
-import { addDays, today } from "../../shared/utils/dates.ts";
+import { addDays, pendingPeriod, today } from "../../shared/utils/dates.ts";
 
 export interface DashboardSummary {
   totalMembers: number;
@@ -57,10 +57,14 @@ export async function getSummary(gym: Gym): Promise<DashboardSummary> {
       where: { gymId: gym.id, paidAt: { gte: monthStart } },
       _sum: { amount: true },
     }),
-    // What the gym is owed right now: the fees of everyone already past due.
-    prisma.member.aggregate({
+    // What the gym is owed right now.
+    //
+    // Deliberately rows rather than a SUM: summing feeAmount counts a single
+    // month per overdue member, so a member three months behind was reported
+    // as owing one. Each row is weighted by how many months it is behind.
+    prisma.member.findMany({
       where: { ...active, nextDueDate: { lt: now } },
-      _sum: { feeAmount: true },
+      select: { feeAmount: true, nextDueDate: true },
     }),
   ]);
 
@@ -71,6 +75,10 @@ export async function getSummary(gym: Gym): Promise<DashboardSummary> {
     dueSoon,
     overdue,
     collectedThisMonth: Number(collected._sum.amount ?? 0),
-    pendingAmount: Number(pending._sum.feeAmount ?? 0),
+    pendingAmount: pending.reduce((total, m) => {
+      if (m.feeAmount === null) return total;
+      const period = pendingPeriod(m.nextDueDate, now);
+      return total + Number(m.feeAmount) * (period?.months ?? 0);
+    }, 0),
   };
 }

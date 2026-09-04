@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { authRouter } from "./modules/auth/auth.routes.ts";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes.ts";
+import { feePlansRouter } from "./modules/fee-plans/fee-plans.routes.ts";
 import { gymsRouter, gymScopedRouter } from "./modules/gyms/gyms.routes.ts";
 import { healthRouter } from "./modules/health/health.routes.ts";
 import { membersRouter } from "./modules/members/members.routes.ts";
@@ -64,6 +65,7 @@ export function createApp() {
   gymScoped.use("/payments", gymPaymentsRouter);
   gymScoped.use("/reminders", remindersRouter);
   gymScoped.use("/dashboard", dashboardRouter);
+  gymScoped.use("/fee-plans", feePlansRouter);
   // Mounted last so /gyms/:gymId itself (GET, PATCH) resolves after the
   // more specific sub-resources above.
   gymScoped.use("/", gymScopedRouter);

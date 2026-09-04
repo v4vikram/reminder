@@ -9,9 +9,17 @@ export const createMemberSchema = z.object({
   name: z.string().trim().min(2).max(100),
   // Accepted in any common form; normalised to E.164 in the service layer.
   phone: z.string().trim().min(1),
-  feeAmount: z.number().nonnegative().max(1_000_000),
+  /**
+   * Optional: an owner often adds a member before a fee has been agreed or
+   * collected, and fills it in when the first payment is recorded.
+   */
+  feeAmount: z.number().nonnegative().max(1_000_000).optional(),
+  /** Start of the covered period. */
   joinDate: isoDate,
-  /** Optional; defaults to joinDate + 1 month. */
+  /**
+   * End of the covered period - the date the next payment falls due.
+   * Optional; defaults to joinDate + 1 month.
+   */
   nextDueDate: isoDate.optional(),
   notes: z.string().trim().max(500).optional(),
 });

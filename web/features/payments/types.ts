@@ -7,6 +7,8 @@ export interface Payment {
   gymId: string;
   memberId: string;
   amount: number;
+  /** How many months this payment covered. */
+  months: number;
   paidAt: string;
   periodStart: string | null;
   periodEnd: string | null;
@@ -16,6 +18,8 @@ export interface Payment {
 }
 
 export interface RecordPaymentInput {
+  /** Members often clear several months at once, usually at a bundled rate. */
+  months?: number;
   amount?: number;
   paidAt?: string;
   method?: PaymentMethod;

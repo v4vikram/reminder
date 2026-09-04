@@ -12,6 +12,8 @@ export interface PaymentResponse {
   gymId: string;
   memberId: string;
   amount: number;
+  /** How many months this payment covered. */
+  months: number;
   paidAt: string;
   periodStart: string | null;
   periodEnd: string | null;
@@ -30,6 +32,7 @@ export function toResponse(payment: Payment): PaymentResponse {
     gymId: payment.gymId,
     memberId: payment.memberId,
     amount: Number(payment.amount),
+    months: payment.months,
     paidAt: payment.paidAt.toISOString(),
     periodStart: toIsoDate(payment.periodStart),
     periodEnd: toIsoDate(payment.periodEnd),
@@ -60,16 +63,27 @@ export async function recordPayment(
   const member = await membersRepo.findByIdInGym(gym.id, memberId);
   if (!member) throw ApiError.notFound("Member not found");
 
+  // A payment with no amount and no agreed fee cannot be recorded: there is
+  // nothing to fall back on, and guessing would corrupt the revenue history.
+  const amount = input.amount ?? (member.feeAmount === null ? null : Number(member.feeAmount));
+  if (amount === null) {
+    throw ApiError.validation("No amount given and this member has no fee set", [
+      { field: "amount", message: "Enter an amount, or set the member fee first" },
+    ]);
+  }
+
   const periodStart = toDateOnly(member.nextDueDate);
-  const newDueDate = addMonths(periodStart, 1);
-  // Inclusive end of the cycle this payment covers.
+  // Advances by however many months were paid for, not always one.
+  const newDueDate = addMonths(periodStart, input.months);
+  // Inclusive end of the span this payment covers.
   const periodEnd = addDays(newDueDate, -1);
 
   const result = await prisma.$transaction(async (tx) => {
     const payment = await repo.createTx(tx, {
       gymId: gym.id,
       memberId: member.id,
-      amount: input.amount ?? Number(member.feeAmount),
+      amount,
+      months: input.months,
       ...(input.paidAt ? { paidAt: new Date(input.paidAt) } : {}),
       periodStart,
       periodEnd,

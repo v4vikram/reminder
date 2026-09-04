@@ -12,6 +12,8 @@ import { useDeactivateMember, useMember } from "@/features/members/queries";
 import { dueStatusLabel, dueStatusVariant } from "@/features/members/utils";
 import { useMemberPayments, useRecordPayment } from "@/features/payments/queries";
 import type { PaymentMethod } from "@/features/payments/types";
+import { useFeePlans } from "@/features/fee-plans/queries";
+import { PlanPicker } from "@/features/fee-plans/components/plan-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,16 +54,38 @@ export default function MemberDetailPage() {
   const gymId = activeGym!.id;
 
   const [method, setMethod] = useState<PaymentMethod>("CASH");
+  const [months, setMonths] = useState("1");
+  const [amount, setAmount] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const member = useMember(gymId, memberId);
   const payments = useMemberPayments(gymId, memberId);
+  const { data: plans } = useFeePlans(gymId);
   const recordPayment = useRecordPayment(gymId, memberId);
   const deactivate = useDeactivateMember(gymId);
 
+  const fee = member.data?.feeAmount ?? null;
+
+  /**
+   * Reset the form whenever the sheet opens, defaulting to one month at the
+   * member's fee - the common case then needs no typing at all.
+   */
+  function handleSheetOpenChange(open: boolean) {
+    setSheetOpen(open);
+    if (open) {
+      setMonths("1");
+      setAmount(fee !== null ? String(fee) : "");
+      setMethod("CASH");
+    }
+  }
+
   function handleRecordPayment() {
     recordPayment.mutate(
-      { method },
+      {
+        months: Number(months),
+        ...(amount !== "" ? { amount: Number(amount) } : {}),
+        method,
+      },
       {
         onSuccess: () => {
           notify.success("Payment recorded", "Due date aage badh gayi");
@@ -102,7 +127,12 @@ export default function MemberDetailPage() {
         <p className="text-sm text-muted-foreground">
           {member.error?.message ?? "Member not found"}
         </p>
-        <Button nativeButton={false} render={<Link href="/members" />} variant="outline" className="mt-4 h-12">
+        <Button
+          nativeButton={false}
+          render={<Link href="/members" />}
+          variant="outline"
+          className="mt-4 h-12"
+        >
           Back to members
         </Button>
       </div>
@@ -129,6 +159,28 @@ export default function MemberDetailPage() {
         </div>
       </header>
 
+      {/* Arrears first and in full: how many months, for which span, how much.
+          The old screen showed one due date and one month's fee, which hid the
+          real size of the debt. */}
+      {m.pending ? (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="space-y-1 py-4">
+            <p className="tabular text-lg font-semibold text-destructive">
+              {m.pending.months} {m.pending.months === 1 ? "month" : "months"} pending
+              {m.pending.amount !== null ? ` · ${formatRupees(m.pending.amount)}` : ""}
+            </p>
+            <p className="tabular text-sm text-muted-foreground">
+              {formatDate(m.pending.from)} – {formatDate(m.pending.to)}
+            </p>
+            {m.pending.amount === null ? (
+              <p className="text-xs text-muted-foreground">
+                Monthly fees set nahi hai, isliye total nahi nikal sakta.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardContent className="space-y-3 py-4">
           <div className="flex items-center justify-between">
@@ -140,7 +192,10 @@ export default function MemberDetailPage() {
             </Badge>
           </div>
           <Separator />
-          <Row label="Monthly fees" value={formatRupees(m.feeAmount)} />
+          <Row
+            label="Monthly fees"
+            value={m.feeAmount === null ? "Set nahi hai" : formatRupees(m.feeAmount)}
+          />
           <Row label="Next due" value={formatDate(m.nextDueDate)} />
           <Row label="Joined" value={formatDate(m.joinDate)} />
           {m.notes ? <Row label="Notes" value={m.notes} /> : null}
@@ -148,7 +203,7 @@ export default function MemberDetailPage() {
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <Sheet open={sheetOpen} onOpenChange={handleSheetOpenChange}>
           <SheetTrigger render={<Button size="lg" className="h-12" />}>
             <WalletIcon className="size-4" />
             Paid
@@ -157,34 +212,78 @@ export default function MemberDetailPage() {
             <SheetHeader>
               <SheetTitle>Payment record karo</SheetTitle>
               <SheetDescription>
-                {formatRupees(m.feeAmount)} · due date {formatDate(m.nextDueDate)} se ek
-                mahina aage badh jayegi.
+                Due date {formatDate(m.nextDueDate)} se {months}{" "}
+                {Number(months) === 1 ? "mahina" : "mahine"} aage badh jayegi.
               </SheetDescription>
             </SheetHeader>
 
-            <div className="space-y-2 px-4">
-              <Label>Payment method</Label>
-              {/* Plain buttons rather than a toggle group: one tap, four large
-                  targets, and no dependence on an array-valued API. */}
-              <div className="grid grid-cols-4 gap-2">
-                {METHODS.map((option) => (
-                  <Button
-                    key={option}
-                    type="button"
-                    variant={method === option ? "default" : "outline"}
-                    onClick={() => setMethod(option)}
-                    className="h-12"
-                  >
-                    {option}
-                  </Button>
-                ))}
+            <div className="space-y-4 px-4">
+              {plans && plans.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Plan</Label>
+                  {/* One tap fills both duration and amount - the whole point of
+                      keeping the gym's tiers as data. */}
+                  <PlanPicker
+                    plans={plans}
+                    selectedMonths={Number(months)}
+                    onSelect={(plan) => {
+                      setMonths(String(plan.months));
+                      setAmount(String(plan.amount));
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="months">Months</Label>
+                  <Input
+                    id="months"
+                    value={months}
+                    onChange={(e) =>
+                      setMonths(e.target.value.replace(/[^0-9]/g, "") || "1")
+                    }
+                    inputMode="numeric"
+                    className="tabular h-12 text-base"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount">Amount (₹)</Label>
+                  <Input
+                    id="amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="400"
+                    inputMode="numeric"
+                    className="tabular h-12 text-base"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Payment method</Label>
+                {/* Plain buttons rather than a toggle group: one tap, four large
+                    targets, and no dependence on an array-valued API. */}
+                <div className="grid grid-cols-4 gap-2">
+                  {METHODS.map((option) => (
+                    <Button
+                      key={option}
+                      type="button"
+                      variant={method === option ? "default" : "outline"}
+                      onClick={() => setMethod(option)}
+                      className="h-12"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <SheetFooter>
               <Button
                 onClick={handleRecordPayment}
-                disabled={recordPayment.isPending}
+                disabled={recordPayment.isPending || amount === ""}
                 size="lg"
                 className="h-12 w-full"
               >
@@ -224,8 +323,13 @@ export default function MemberDetailPage() {
                 <Card>
                   <CardContent className="flex items-center justify-between py-3">
                     <div>
-                      <p className="font-medium">{formatRupees(p.amount)}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="tabular font-medium">
+                        {formatRupees(p.amount)}
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                          {p.months} {p.months === 1 ? "month" : "months"}
+                        </span>
+                      </p>
+                      <p className="tabular text-xs text-muted-foreground">
                         {p.periodStart && p.periodEnd
                           ? `${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}`
                           : formatDate(p.paidAt)}
@@ -271,7 +375,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
+      <span className="tabular text-right font-medium">{value}</span>
     </div>
   );
 }

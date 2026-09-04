@@ -6,6 +6,7 @@ import {
   addMonths,
   daysOverdue,
   deriveDueStatus,
+  pendingPeriod,
   today,
   toDateOnly,
   type DueStatus,
@@ -28,15 +29,41 @@ export interface MemberResponse {
   gymId: string;
   name: string;
   phone: string;
-  feeAmount: number;
+  /** Null when the owner has not agreed a fee for this member yet. */
+  feeAmount: number | null;
   joinDate: string;
   nextDueDate: string;
   status: Member["status"];
   dueStatus: DueStatus;
   daysOverdue: number;
+  /**
+   * Arrears as a span, not a single date. A member three months behind owes
+   * three months; reporting one due date and one month's fee understated it.
+   * Null when nothing is overdue.
+   */
+  pending: {
+    months: number;
+    from: string;
+    to: string;
+    /** months x feeAmount, or null when no fee is set. */
+    amount: number | null;
+  } | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+function toPending(member: Member, now: Date): MemberResponse["pending"] {
+  const period = pendingPeriod(member.nextDueDate, now);
+  if (!period) return null;
+
+  return {
+    months: period.months,
+    from: toIsoDate(period.from),
+    to: toIsoDate(period.to),
+    amount:
+      member.feeAmount === null ? null : Number(member.feeAmount) * period.months,
+  };
 }
 
 /** Serialises a member for the wire, adding the derived due fields. */
@@ -47,12 +74,13 @@ export function toResponse(member: Member, gym: Gym, now = today()): MemberRespo
     name: member.name,
     phone: member.phone,
     // Prisma returns Decimal; the wire format is a plain number.
-    feeAmount: Number(member.feeAmount),
+    feeAmount: member.feeAmount === null ? null : Number(member.feeAmount),
     joinDate: toIsoDate(member.joinDate),
     nextDueDate: toIsoDate(member.nextDueDate),
     status: member.status,
     dueStatus: deriveDueStatus(member.nextDueDate, gym.reminderDaysBefore, now),
     daysOverdue: daysOverdue(member.nextDueDate, now),
+    pending: toPending(member, now),
     notes: member.notes,
     createdAt: member.createdAt.toISOString(),
     updatedAt: member.updatedAt.toISOString(),
@@ -158,7 +186,9 @@ export async function createMember(
     gymId: gym.id,
     name: input.name,
     phone,
-    feeAmount: input.feeAmount,
+    // Omitted rather than set to null, so Prisma leaves the column unset
+    // when no fee has been agreed yet.
+    ...(input.feeAmount !== undefined ? { feeAmount: input.feeAmount } : {}),
     joinDate,
     nextDueDate,
     ...(input.notes !== undefined ? { notes: input.notes } : {}),

@@ -20,6 +20,7 @@ MVP me reminder manual hai — system `wa.me` link banata hai, owner tap karke b
 ```mermaid
 erDiagram
     USER ||--o{ GYM : "owns"
+    GYM ||--o{ FEEPLAN : "prices"
     USER ||--o{ PAYMENT : "records"
     GYM ||--o{ MEMBER : "has"
     GYM ||--o{ PAYMENT : "scopes"
@@ -51,12 +52,21 @@ erDiagram
         datetime updatedAt
     }
 
+    FEEPLAN {
+        string id PK
+        string gymId FK
+        int months
+        decimal amount
+        datetime createdAt
+        datetime updatedAt
+    }
+
     MEMBER {
         string id PK
         string gymId FK
         string name
         string phone
-        decimal feeAmount
+        decimal feeAmount "nullable"
         date joinDate
         date nextDueDate
         enum status
@@ -70,6 +80,7 @@ erDiagram
         string gymId FK
         string memberId FK
         decimal amount
+        int months
         datetime paidAt
         date periodStart
         date periodEnd
@@ -160,6 +171,49 @@ Automation add karte waqt sirf `reminders.service.ts` ka andar ka code badlega. 
 
 ---
 
+### 3.5b Fee plans alag table me
+
+**Decision:** Gym ke price tiers (1 month 400, 2 months 700, 3 months 1000) ek
+alag `FeePlan` table me hain, `@@unique([gymId, months])` ke saath.
+
+**Kyun:** Bundle discounted hota hai — 2 months ka 700 hai, 800 nahi. Matlab
+amount `months x monthly rate` se derive **nahi** ho sakta; har tier owner ki
+apni price hai, isliye store karni padti hai.
+
+Ye tiers add-member aur payment screens pe quick-select buttons banate hain —
+owner har baar do numbers type karne ke bajaye ek tap karta hai.
+
+**Delete safe hai:** plan sirf figures bharne ka shortcut hai, kisi cheez ka
+record nahi. Payment apna `amount` aur `months` khud store karti hai, isliye
+plan hatane se history pe koi asar nahi.
+
+---
+
+### 3.5c `Member.feeAmount` nullable
+
+**Decision:** Fee optional hai.
+
+**Kyun:** Owner aksar member pehle add karta hai aur fees baad me tay karta ya
+leta hai ("kuch log month complete hone pe dete hain"). Fee ko mandatory rakhne
+se ya to galat number bharna padta, ya member add hi nahi hota.
+
+**Consequence:** Jahan bhi fee se hisaab hota hai (pending amount, dashboard
+total) wahan null handle karna padta hai — amount ke bajaye `null` lautaya
+jata hai, 0 nahi, taaki "fees set nahi hai" aur "zero fees" alag dikhein.
+
+---
+
+### 3.5d `Payment.months`
+
+**Decision:** Har payment record karti hai ki wo kitne mahine cover karti hai.
+
+**Kyun:** Members ek saath kai mahine clear karte hain, aksar bundle rate pe.
+Pehle due date hamesha ek mahina aage badhti thi — 2 mahine ka paisa lene pe bhi.
+Ab wo `months` ke hisaab se badhti hai, aur `periodStart`/`periodEnd` poora
+span cover karte hain.
+
+---
+
 ### 3.6 Plan/settings `Gym` pe fields ke roop me
 
 **Decision:** `plan`, `monthlyPrice`, `trialEndsAt`, `reminderDaysBefore` — Gym row pe.
@@ -244,6 +298,32 @@ Status stored nahi hai — `nextDueDate` aur gym ke `reminderDaysBefore` se runt
 | `upcoming` | `nextDueDate > today + reminderDaysBefore` |
 
 **Kyun store nahi kiya:** Ye time ke saath khud badalta hai. Store karte to ek daily cron chahiye hota sirf statuses refresh karne ke liye — aur wo cron fail hone pe poora dashboard galat dikhta. Derive karna hamesha correct hai.
+
+---
+
+---
+
+## 6b. Arrears — pending ek span hai, ek date nahi
+
+Ek member 3 mahine peeche ho to wo **3 mahine** ka bakaya rakhta hai, ek ka nahi.
+Pehle sirf `nextDueDate` aur ek mahine ki fee dikhti thi, jo debt ko chhupa
+deti thi.
+
+Ab har overdue member ke liye derive hota hai:
+
+| Field | Kaise |
+|---|---|
+| `pending.months` | Kitni due dates nikal chuki hain = `monthsElapsed(nextDueDate, today) + 1` |
+| `pending.from` | `nextDueDate` — bakaya yahin se shuru hua |
+| `pending.to` | `nextDueDate + months - 1 din` |
+| `pending.amount` | `months x feeAmount`, ya `null` agar fee set nahi |
+
+`+1` isliye hai ki jo due date nikal chuki hai wo khud bhi pending hai.
+Misaal: due 20 Jun, aaj 4 Sep → 2 poore mahine beete, par Jun/Jul/Aug teeno ki
+fees pending hai = 3.
+
+**Dashboard ka `pendingAmount` bhi isi se banta hai.** Pehle wo overdue members
+ke `feeAmount` ka SUM tha — matlab har member ka sirf ek mahina gina jata tha.
 
 ---
 

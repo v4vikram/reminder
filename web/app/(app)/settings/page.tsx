@@ -7,6 +7,7 @@ import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/format";
 import { useSession, useSignOut } from "@/features/auth/queries";
 import { useUpdateGym } from "@/features/gyms/queries";
+import { FeePlanManager } from "@/features/fee-plans/components/fee-plan-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +75,8 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <FeePlanManager gymId={gym.id} />
 
       <Card>
         <CardContent className="space-y-3 py-4">

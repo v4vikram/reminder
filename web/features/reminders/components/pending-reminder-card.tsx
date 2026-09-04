@@ -17,6 +17,7 @@ export function PendingReminderCard({
   sending: boolean;
 }) {
   const { member } = item;
+  const { pending } = member;
 
   return (
     <Card>
@@ -33,12 +34,28 @@ export function PendingReminderCard({
           </Badge>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Due {formatDate(member.nextDueDate)}
-          </span>
-          <span className="font-medium">{formatRupees(member.feeAmount)}</span>
-        </div>
+        {pending ? (
+          /* For someone several months behind, the amount owed and the span it
+             covers matter more than the next due date on its own. */
+          <div className="tabular space-y-0.5 rounded-md bg-destructive/5 px-3 py-2">
+            <p className="text-sm font-medium text-destructive">
+              {pending.months} {pending.months === 1 ? "month" : "months"} pending
+              {pending.amount !== null ? ` · ${formatRupees(pending.amount)}` : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatDate(pending.from)} – {formatDate(pending.to)}
+            </p>
+          </div>
+        ) : (
+          <div className="tabular flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              Due {formatDate(member.nextDueDate)}
+            </span>
+            {member.feeAmount !== null ? (
+              <span className="font-medium">{formatRupees(member.feeAmount)}</span>
+            ) : null}
+          </div>
+        )}
 
         {/* Shown so the owner knows exactly what is about to be sent. */}
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">

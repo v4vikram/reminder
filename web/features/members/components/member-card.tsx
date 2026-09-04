@@ -8,16 +8,39 @@ import { dueStatusBadge, dueStatusVariant } from "../utils";
 import type { Member } from "../types";
 
 export function MemberCard({ member }: { member: Member }) {
+  const { pending } = member;
+
   return (
     <Link href={`/members/${member.id}`} className="block">
       <Card className="transition-colors active:bg-accent">
         <CardContent className="flex items-center justify-between gap-3 py-4">
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-0.5">
             <p className="truncate font-medium">{member.name}</p>
-            <p className="text-sm text-muted-foreground">
-              Due {formatDate(member.nextDueDate)} · {formatRupees(member.feeAmount)}
-            </p>
+
+            {pending ? (
+              <>
+                {/*
+                  Arrears read as a span. "3 months pending · ₹1,200" over
+                  "20 Jun – 19 Sep" tells the owner how far behind this member
+                  is and for which period - a single due date and one month's
+                  fee said neither.
+                */}
+                <p className="tabular text-sm font-medium text-destructive">
+                  {pending.months} {pending.months === 1 ? "month" : "months"} pending
+                  {pending.amount !== null ? ` · ${formatRupees(pending.amount)}` : ""}
+                </p>
+                <p className="tabular text-xs text-muted-foreground">
+                  {formatDate(pending.from)} – {formatDate(pending.to)}
+                </p>
+              </>
+            ) : (
+              <p className="tabular text-sm text-muted-foreground">
+                Due {formatDate(member.nextDueDate)}
+                {member.feeAmount !== null ? ` · ${formatRupees(member.feeAmount)}` : ""}
+              </p>
+            )}
           </div>
+
           <Badge variant={dueStatusVariant[member.dueStatus]} className="shrink-0">
             {dueStatusBadge(member.dueStatus, member.daysOverdue)}
           </Badge>

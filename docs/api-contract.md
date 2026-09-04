@@ -94,6 +94,7 @@ Request → authenticate (JWT valid?) → tenantGuard (ye gym tumhara hai?) → 
 | `payments` | Payment record + due date advance (transactional) |
 | `reminders` | Pending list + wa.me link generation + send logging |
 | `dashboard` | Summary counts |
+| `fee-plans` | Gym ke price tiers (quick-select buttons ke liye) |
 
 Har module apna `routes / controller / service / validator` rakhta hai. Business logic **service** me — controller sirf request parse karke service call karta hai aur response format karta hai.
 

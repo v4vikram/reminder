@@ -89,6 +89,7 @@ model Gym {
   updatedAt DateTime @updatedAt
 
   owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  feePlans  FeePlan[]
   members   Member[]
   payments  Payment[]
   reminders Reminder[]
@@ -107,7 +108,9 @@ model Member {
   /// and stored that way rather than re-derived at every use.
   phone String
 
-  feeAmount Decimal  @db.Decimal(10, 2)
+  /// Optional: an owner often adds a member before agreeing or collecting a
+  /// fee, and fills it in when the first payment is recorded.
+  feeAmount Decimal? @db.Decimal(10, 2)
   joinDate  DateTime @db.Date
 
   /// Denormalised rather than derived from payment history: it turns the core
@@ -133,6 +136,28 @@ model Member {
   @@map("members")
 }
 
+/// A gym's price tiers, e.g. 1 month 400, 2 months 700, 3 months 1000.
+///
+/// Bundles are usually discounted, so the amount is NOT months x monthly rate -
+/// it is whatever the owner charges. That is why each tier is stored rather
+/// than derived.
+model FeePlan {
+  id     String  @id @default(cuid())
+  gymId  String
+  months Int
+  amount Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  /// One tier per duration per gym.
+  @@unique([gymId, months])
+  @@index([gymId, months])
+  @@map("fee_plans")
+}
+
 /// An immutable payment record. Marking a member as paid writes one of these
 /// rather than flipping a flag, which preserves the audit trail and gives
 /// Phase 2 analytics something to build on.
@@ -141,6 +166,9 @@ model Payment {
   gymId    String
   memberId String
   amount   Decimal  @db.Decimal(10, 2)
+  /// How many months this payment covers. Members frequently pay for several
+  /// at once, usually at a bundled rate, so this cannot be assumed to be 1.
+  months   Int      @default(1)
   paidAt   DateTime @default(now())
 
   /// The billing period this payment covers.

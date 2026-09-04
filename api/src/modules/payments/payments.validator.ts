@@ -5,6 +5,11 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected a date in YYYY-MM-DD format");
 
 export const recordPaymentSchema = z.object({
+  /**
+   * How many months this payment covers. Members often clear several at once,
+   * so the due date cannot simply advance by one.
+   */
+  months: z.number().int().min(1).max(36).default(1),
   /** Defaults to the member's current feeAmount when omitted. */
   amount: z.number().nonnegative().max(1_000_000).optional(),
   /** Defaults to now. Allows back-dating an entry the owner forgot to record. */
