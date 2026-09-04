@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api-client";
-import { formatRupees } from "@/lib/format";
 import { useFeePlans } from "@/features/fee-plans/queries";
 import { DurationPicker } from "@/features/fee-plans/components/plan-picker";
 import { Button } from "@/components/ui/button";
@@ -74,10 +73,6 @@ export function MemberForm({
   // Highlights the duration button matching the current start/end pair.
   const selectedMonths = monthsBetweenIso(form.joinDate, form.nextDueDate) ?? undefined;
 
-  // Monthly-rate shortcuts, taken from whatever the gym charges for one month.
-  const monthlyRates = [
-    ...new Set((plans ?? []).filter((p) => p.months === 1).map((p) => p.amount)),
-  ];
 
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -150,21 +145,6 @@ export function MemberForm({
           {t("monthlyFee")}{" "}
           <span className="text-muted-foreground">{tc("optional")}</span>
         </Label>
-        {monthlyRates.length > 0 ? (
-          <div className="flex flex-wrap gap-2 pb-1">
-            {monthlyRates.map((rate) => (
-              <Button
-                key={rate}
-                type="button"
-                variant={form.feeAmount === String(rate) ? "default" : "outline"}
-                onClick={() => set("feeAmount", String(rate))}
-                className="tabular h-11 flex-1 basis-20"
-              >
-                {formatRupees(rate)}
-              </Button>
-            ))}
-          </div>
-        ) : null}
         <Input
           id="fee"
           value={form.feeAmount}

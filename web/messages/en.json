@@ -6,7 +6,7 @@
     "tryAgain": "Try again",
     "notSet": "Not set",
     "months": "{count, plural, one {# month} other {# months}}",
-    "monthsShort": "{count, plural, one {# mo} other {# mo}}"
+    "monthsShort": "{count}m"
   },
   "nav": {
     "home": "Home",

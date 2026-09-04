@@ -6,7 +6,7 @@
     "tryAgain": "Dobara try karo",
     "notSet": "Set nahi hai",
     "months": "{count, plural, one {# mahina} other {# mahine}}",
-    "monthsShort": "{count, plural, one {# mo} other {# mo}}"
+    "monthsShort": "{count}m"
   },
   "nav": {
     "home": "Home",
