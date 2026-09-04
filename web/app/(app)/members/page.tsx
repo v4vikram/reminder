@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { PlusIcon, SearchIcon, UsersIcon } from "lucide-react";
 import { useSession } from "@/features/auth/queries";
 import { useMembers } from "@/features/members/queries";
@@ -18,6 +19,7 @@ type Filter = "all" | DueStatus;
 export default function MembersPage() {
   const { activeGym } = useSession();
   const gymId = activeGym!.id;
+  const t = useTranslations("members");
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
 
@@ -31,14 +33,19 @@ export default function MembersPage() {
     <div className="space-y-4 px-4 pt-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Members</h1>
-          <p className="text-sm text-muted-foreground">
-            {data ? `${data.total} ${data.total === 1 ? "member" : "members"}` : " "}
+          <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="tabular text-sm text-muted-foreground">
+            {data ? t("count", { count: data.total }) : " "}
           </p>
         </div>
-        <Button nativeButton={false} render={<Link href="/members/new" />} size="sm" className="h-11">
+        <Button
+          nativeButton={false}
+          render={<Link href="/members/new" />}
+          size="sm"
+          className="h-11"
+        >
           <PlusIcon className="size-4" />
-          Add
+          {t("add")}
         </Button>
       </header>
 
@@ -49,7 +56,7 @@ export default function MembersPage() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Naam ya phone se dhoondo"
+          placeholder={t("search")}
           className="h-12 pl-9 text-base"
           autoComplete="off"
         />
@@ -57,10 +64,10 @@ export default function MembersPage() {
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
-          <TabsTrigger value="due_soon">Soon</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="all">{t("filterAll")}</TabsTrigger>
+          <TabsTrigger value="overdue">{t("filterOverdue")}</TabsTrigger>
+          <TabsTrigger value="due_soon">{t("filterSoon")}</TabsTrigger>
+          <TabsTrigger value="upcoming">{t("filterUpcoming")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -76,12 +83,15 @@ export default function MembersPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
             <UsersIcon className="size-8 text-muted-foreground" />
-            <p className="font-medium">
-              {search ? "Koi member nahi mila" : "Abhi koi member nahi"}
-            </p>
+            <p className="font-medium">{search ? t("emptySearch") : t("empty")}</p>
             {!search ? (
-              <Button nativeButton={false} render={<Link href="/members/new" />} size="sm" className="mt-2 h-11">
-                Pehla member add karo
+              <Button
+                nativeButton={false}
+                render={<Link href="/members/new" />}
+                size="sm"
+                className="mt-2 h-11"
+              >
+                {t("addFirst")}
               </Button>
             ) : null}
           </CardContent>

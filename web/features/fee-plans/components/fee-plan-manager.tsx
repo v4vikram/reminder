@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlusIcon, TrashIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { formatRupees } from "@/lib/format";
@@ -24,6 +25,8 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
   const { data: plans, isPending } = useFeePlans(gymId);
   const createPlan = useCreateFeePlan(gymId);
   const deletePlan = useDeleteFeePlan(gymId);
+  const t = useTranslations("feePlans");
+  const tc = useTranslations("common");
 
   const [months, setMonths] = useState("");
   const [amount, setAmount] = useState("");
@@ -36,10 +39,10 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
         onSuccess: () => {
           setMonths("");
           setAmount("");
-          notify.success("Plan added");
+          notify.success(t("added"));
         },
         onError: (err) =>
-          notify.error(err instanceof ApiError ? err.message : "Could not add the plan"),
+          notify.error(err instanceof ApiError ? err.message : t("addFailed")),
       },
     );
   }
@@ -47,10 +50,9 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Fee plans</CardTitle>
+        <CardTitle className="text-base">{t("title")}</CardTitle>
         <CardDescription>
-          Ek baar daal do, phir member add karte waqt aur payment lete waqt bas tap
-          karna hoga. Bundle sasta ho sakta hai — jaise 1 month ₹400, 2 months ₹700.
+          {t("description")}
         </CardDescription>
       </CardHeader>
 
@@ -67,13 +69,13 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
                 <span className="tabular text-sm">
                   <span className="font-medium">{formatRupees(plan.amount)}</span>
                   <span className="ml-2 text-muted-foreground">
-                    {plan.months} {plan.months === 1 ? "month" : "months"}
+                    {tc("months", { count: plan.months })}
                   </span>
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`Delete the ${plan.months} month plan`}
+                  aria-label={t("deleteLabel", { months: plan.months })}
                   onClick={() => deletePlan.mutate(plan.id)}
                   disabled={deletePlan.isPending}
                   className="size-11 shrink-0 text-destructive"
@@ -85,7 +87,7 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Abhi koi plan nahi. Neeche add karo.
+            {t("empty")}
           </p>
         )}
 
@@ -93,26 +95,26 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="plan-months" className="text-xs text-muted-foreground">
-                Months
+                {t("months")}
               </Label>
               <Input
                 id="plan-months"
                 value={months}
                 onChange={(e) => setMonths(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="2"
+                placeholder={t("monthsPlaceholder")}
                 inputMode="numeric"
                 className="tabular h-12 text-base"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="plan-amount" className="text-xs text-muted-foreground">
-                Amount (₹)
+                {t("amount")}
               </Label>
               <Input
                 id="plan-amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="700"
+                placeholder={t("amountPlaceholder")}
                 inputMode="numeric"
                 className="tabular h-12 text-base"
               />
@@ -125,7 +127,7 @@ export function FeePlanManager({ gymId }: { gymId: string }) {
             disabled={createPlan.isPending || months === "" || amount === ""}
           >
             {createPlan.isPending ? <Spinner className="size-4" /> : <PlusIcon className="size-4" />}
-            Plan add karo
+            {t("add")}
           </Button>
         </form>
       </CardContent>

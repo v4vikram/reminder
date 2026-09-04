@@ -1,0 +1,173 @@
+{
+  "common": {
+    "optional": "(optional)",
+    "back": "Wapas",
+    "save": "Save",
+    "tryAgain": "Dobara try karo",
+    "notSet": "Set nahi hai",
+    "months": "{count, plural, one {# mahina} other {# mahine}}",
+    "monthsShort": "{count, plural, one {# mo} other {# mo}}"
+  },
+  "nav": {
+    "home": "Home",
+    "members": "Members",
+    "reminders": "Reminders",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Gym Fee Reminder",
+    "tagline": "Fees track karo, reminder ek tap me bhejo.",
+    "cardTitle": "Sign in",
+    "cardDescription": "Apne Google account se sign in karo. Koi password yaad rakhne ki zaroorat nahi.",
+    "continueWithGoogle": "Continue with Google",
+    "footnote": "Gym owners ke liye. Members ko koi app install nahi karni."
+  },
+  "callback": {
+    "signingIn": "Sign in ho raha hai…",
+    "noToken": "Sign-in se token nahi mila.",
+    "failed": "Sign-in fail ho gaya."
+  },
+  "onboarding": {
+    "title": "Apna gym add karo",
+    "description": "Ek baar ka setup. Iske baad members add karna shuru kar sakte ho.",
+    "gymName": "Gym ka naam",
+    "gymPhone": "Gym ka phone",
+    "continue": "Continue",
+    "createFailed": "Gym nahi ban paya"
+  },
+  "dashboard": {
+    "greeting": "Namaste",
+    "loadFailed": "Dashboard load nahi ho paya",
+    "needAttention": "{count, plural, one {# member ko reminder bhejna hai} other {# members ko reminder bhejna hai}}",
+    "breakdown": "{overdue} overdue · {dueSoon} due soon",
+    "send": "Bhejo",
+    "overdue": "Overdue",
+    "dueSoon": "Due soon",
+    "activeMembers": "Active members",
+    "pendingAmount": "Pending amount",
+    "collectedThisMonth": "Is mahine collect hua",
+    "seeAllMembers": "Saare members dekho"
+  },
+  "members": {
+    "title": "Members",
+    "count": "{count, plural, one {# member} other {# members}}",
+    "add": "Add",
+    "search": "Naam ya phone se dhoondo",
+    "filterAll": "All",
+    "filterOverdue": "Overdue",
+    "filterSoon": "Soon",
+    "filterUpcoming": "Upcoming",
+    "empty": "Abhi koi member nahi",
+    "emptySearch": "Koi member nahi mila",
+    "addFirst": "Pehla member add karo",
+    "pending": "{count, plural, one {# mahina pending} other {# mahine pending}}",
+    "due": "Due {date}"
+  },
+  "memberForm": {
+    "title": "Naya member",
+    "name": "Naam",
+    "namePlaceholder": "Rahul Sharma",
+    "phone": "WhatsApp number",
+    "phonePlaceholder": "98765 43210",
+    "phoneHint": "Isi number pe reminder jayega.",
+    "monthlyFee": "Monthly fees",
+    "feePlaceholder": "500",
+    "feeHint": "Abhi tay nahi hua? Khaali chhod do — pehli payment ke waqt bhar sakte ho.",
+    "periodTitle": "Fees kis period ki hai",
+    "periodHint": "End date hi agli due date banegi.",
+    "start": "Start",
+    "end": "End (next due)",
+    "notes": "Notes",
+    "submit": "Member add karo",
+    "added": "Member add ho gaya",
+    "addFailed": "Member add nahi ho paya"
+  },
+  "memberDetail": {
+    "status": "Status",
+    "overdueDays": "{days, plural, one {# din overdue} other {# din overdue}}",
+    "monthlyFees": "Monthly fees",
+    "nextDue": "Next due",
+    "joined": "Joined",
+    "notes": "Notes",
+    "noFeeNote": "Monthly fees set nahi hai, isliye total nahi nikal sakta.",
+    "paid": "Paid",
+    "reminder": "Reminder",
+    "paymentHistory": "Payment history",
+    "noPayments": "Abhi tak koi payment record nahi hui.",
+    "notFound": "Member nahi mila",
+    "backToMembers": "Members pe wapas",
+    "remove": "Member hatao",
+    "removeTitle": "{name} ko hatana hai?",
+    "removeDescription": "Member list se hat jayega, par uski payment history safe rahegi. Dobara join kare to wapas la sakte ho.",
+    "removeCancel": "Rehne do",
+    "removeConfirm": "Hatao",
+    "removed": "Member hata diya",
+    "removedDetail": "History safe hai",
+    "removeFailed": "Member hat nahi paya"
+  },
+  "payment": {
+    "title": "Payment record karo",
+    "description": "Due date {date} se {months, plural, one {# mahina} other {# mahine}} aage badh jayegi.",
+    "plan": "Plan",
+    "months": "Months",
+    "amount": "Amount (₹)",
+    "amountPlaceholder": "400",
+    "method": "Payment method",
+    "confirm": "Confirm payment",
+    "recorded": "Payment record ho gayi",
+    "recordedDetail": "Due date aage badh gayi",
+    "failed": "Payment record nahi ho payi"
+  },
+  "reminders": {
+    "title": "Reminders",
+    "subtitle": "Tap karo, WhatsApp khulega, message pehle se likha hoga.",
+    "filterAll": "All",
+    "filterOverdue": "Overdue",
+    "filterDueSoon": "Due soon",
+    "empty": "Koi reminder pending nahi",
+    "emptyDetail": "Sab members ki fees time pe hai.",
+    "send": "WhatsApp pe bhejo",
+    "sendAgain": "Dobara bhejo",
+    "overdueBadge": "{days}d overdue",
+    "dueSoonBadge": "Due soon",
+    "lastReminder": "Last reminder {when}",
+    "logged": "Reminder log ho gaya",
+    "logFailed": "Reminder record nahi ho paya"
+  },
+  "settings": {
+    "title": "Settings",
+    "reminderDays": "Reminder kitne din pehle",
+    "reminderDaysHint": "Due date se itne din pehle member \"due soon\" dikhega.",
+    "saved": "Settings save ho gayi",
+    "saveFailed": "Settings save nahi ho payi",
+    "trialTill": "Trial {date} tak",
+    "signOut": "Sign out",
+    "appLanguage": "App ki language",
+    "appLanguageHint": "Sirf tumhe jo dikhta hai wo badlega. Members pe koi asar nahi.",
+    "messageLanguage": "Reminder message ki language",
+    "messageLanguageHint": "Tumhare members ko WhatsApp pe jo message jata hai, uski language."
+  },
+  "feePlans": {
+    "title": "Fee plans",
+    "description": "Ek baar daal do, phir member add karte waqt aur payment lete waqt bas tap karna hoga. Bundle sasta ho sakta hai — jaise 1 month ₹400, 2 months ₹700.",
+    "empty": "Abhi koi plan nahi. Neeche add karo.",
+    "months": "Months",
+    "monthsPlaceholder": "2",
+    "amount": "Amount (₹)",
+    "amountPlaceholder": "700",
+    "add": "Plan add karo",
+    "added": "Plan add ho gaya",
+    "addFailed": "Plan add nahi ho paya",
+    "deleteLabel": "{months} mahine ka plan delete karo"
+  },
+  "language": {
+    "en": "English",
+    "hi-Latn": "Hinglish"
+  },
+  "dueStatus": {
+    "overdue": "Overdue",
+    "due_soon": "Due soon",
+    "upcoming": "Upcoming",
+    "overdueShort": "{days}d"
+  }
+}

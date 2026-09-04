@@ -4,15 +4,16 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboardIcon, UsersIcon, BellIcon, SettingsIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSession } from "@/features/auth/queries";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
 const TABS = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboardIcon },
-  { href: "/members", label: "Members", icon: UsersIcon },
-  { href: "/reminders", label: "Reminders", icon: BellIcon },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/dashboard", key: "home", icon: LayoutDashboardIcon },
+  { href: "/members", key: "members", icon: UsersIcon },
+  { href: "/reminders", key: "reminders", icon: BellIcon },
+  { href: "/settings", key: "settings", icon: SettingsIcon },
 ] as const;
 
 /**
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { status, gyms } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -49,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul className="grid grid-cols-4">
-          {TABS.map(({ href, label, icon: Icon }) => {
+          {TABS.map(({ href, key, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return (
               <li key={href}>
@@ -63,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <Icon className="size-5" aria-hidden="true" />
-                  {label}
+                  {t(key)}
                 </Link>
               </li>
             );

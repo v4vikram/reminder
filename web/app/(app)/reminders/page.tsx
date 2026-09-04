@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { BellIcon } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
@@ -23,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function RemindersPage() {
   const { activeGym } = useSession();
   const gymId = activeGym!.id;
+  const t = useTranslations("reminders");
   const [filter, setFilter] = useState<PendingFilter>("all");
   const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -46,14 +48,11 @@ export default function RemindersPage() {
         },
       },
       {
-        onSuccess: () => notify.success("Reminder logged", item.member.name),
+        onSuccess: () => notify.success(t("logged"), item.member.name),
         // The message may well have been sent even though logging failed, so
         // this says what actually happened rather than claiming a failed send.
         onError: (err) =>
-          notify.error(
-            "Could not record the reminder",
-            err instanceof ApiError ? err.message : undefined,
-          ),
+          notify.error(t("logFailed"), err instanceof ApiError ? err.message : undefined),
         onSettled: () => setSendingId(null),
       },
     );
@@ -62,17 +61,15 @@ export default function RemindersPage() {
   return (
     <div className="space-y-4 px-4 pt-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Reminders</h1>
-        <p className="text-sm text-muted-foreground">
-          Tap karo, WhatsApp khulega, message pehle se likha hoga.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as PendingFilter)}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
-          <TabsTrigger value="due_soon">Due soon</TabsTrigger>
+          <TabsTrigger value="all">{t("filterAll")}</TabsTrigger>
+          <TabsTrigger value="overdue">{t("filterOverdue")}</TabsTrigger>
+          <TabsTrigger value="due_soon">{t("filterDueSoon")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -88,10 +85,8 @@ export default function RemindersPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
             <BellIcon className="size-8 text-muted-foreground" />
-            <p className="font-medium">Koi reminder pending nahi</p>
-            <p className="text-sm text-muted-foreground">
-              Sab members ki fees time pe hai.
-            </p>
+            <p className="font-medium">{t("empty")}</p>
+            <p className="text-sm text-muted-foreground">{t("emptyDetail")}</p>
           </CardContent>
         </Card>
       ) : null}

@@ -23,6 +23,7 @@ Har ADR immutable hai. Decision badle to purana ADR `Superseded` mark karke naya
 | [009](009-monorepo.md) | Frontend aur backend ek hi repo me | Accepted |
 | [010](010-stateless-jwt-sessions.md) | Stateless JWT sessions, Google OAuth ke saath | Accepted |
 | [011](011-frontend-architecture.md) | Feature-based frontend: React Query + Zustand + Axios | Accepted |
+| [012](012-internationalisation.md) | Do languages, do audiences: owner UI aur member message alag | Accepted |
 
 ## Template
 

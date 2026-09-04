@@ -1,0 +1,173 @@
+{
+  "common": {
+    "optional": "(optional)",
+    "back": "Back",
+    "save": "Save",
+    "tryAgain": "Try again",
+    "notSet": "Not set",
+    "months": "{count, plural, one {# month} other {# months}}",
+    "monthsShort": "{count, plural, one {# mo} other {# mo}}"
+  },
+  "nav": {
+    "home": "Home",
+    "members": "Members",
+    "reminders": "Reminders",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Gym Fee Reminder",
+    "tagline": "Track fees, send a reminder in one tap.",
+    "cardTitle": "Sign in",
+    "cardDescription": "Sign in with your Google account. No password to remember.",
+    "continueWithGoogle": "Continue with Google",
+    "footnote": "For gym owners. Members do not install anything."
+  },
+  "callback": {
+    "signingIn": "Signing you in…",
+    "noToken": "Sign-in did not return a token.",
+    "failed": "Sign-in failed."
+  },
+  "onboarding": {
+    "title": "Add your gym",
+    "description": "One-time setup. After this you can start adding members.",
+    "gymName": "Gym name",
+    "gymPhone": "Gym phone",
+    "continue": "Continue",
+    "createFailed": "Could not create the gym"
+  },
+  "dashboard": {
+    "greeting": "Hello",
+    "loadFailed": "Could not load the dashboard",
+    "needAttention": "{count, plural, one {# member needs a reminder} other {# members need a reminder}}",
+    "breakdown": "{overdue} overdue · {dueSoon} due soon",
+    "send": "Send",
+    "overdue": "Overdue",
+    "dueSoon": "Due soon",
+    "activeMembers": "Active members",
+    "pendingAmount": "Pending amount",
+    "collectedThisMonth": "Collected this month",
+    "seeAllMembers": "See all members"
+  },
+  "members": {
+    "title": "Members",
+    "count": "{count, plural, one {# member} other {# members}}",
+    "add": "Add",
+    "search": "Search by name or phone",
+    "filterAll": "All",
+    "filterOverdue": "Overdue",
+    "filterSoon": "Soon",
+    "filterUpcoming": "Upcoming",
+    "empty": "No members yet",
+    "emptySearch": "No member found",
+    "addFirst": "Add your first member",
+    "pending": "{count, plural, one {# month pending} other {# months pending}}",
+    "due": "Due {date}"
+  },
+  "memberForm": {
+    "title": "New member",
+    "name": "Name",
+    "namePlaceholder": "Rahul Sharma",
+    "phone": "WhatsApp number",
+    "phonePlaceholder": "98765 43210",
+    "phoneHint": "Reminders go to this number.",
+    "monthlyFee": "Monthly fees",
+    "feePlaceholder": "500",
+    "feeHint": "Not decided yet? Leave it blank — you can fill it in with the first payment.",
+    "periodTitle": "Which period are the fees for",
+    "periodHint": "The end date becomes the next due date.",
+    "start": "Start",
+    "end": "End (next due)",
+    "notes": "Notes",
+    "submit": "Add member",
+    "added": "Member added",
+    "addFailed": "Could not add the member"
+  },
+  "memberDetail": {
+    "status": "Status",
+    "overdueDays": "{days, plural, one {# day overdue} other {# days overdue}}",
+    "monthlyFees": "Monthly fees",
+    "nextDue": "Next due",
+    "joined": "Joined",
+    "notes": "Notes",
+    "noFeeNote": "No monthly fee set, so the total cannot be worked out.",
+    "paid": "Paid",
+    "reminder": "Reminder",
+    "paymentHistory": "Payment history",
+    "noPayments": "No payments recorded yet.",
+    "notFound": "Member not found",
+    "backToMembers": "Back to members",
+    "remove": "Remove member",
+    "removeTitle": "Remove {name}?",
+    "removeDescription": "They leave the members list, but their payment history is kept. You can bring them back if they rejoin.",
+    "removeCancel": "Keep",
+    "removeConfirm": "Remove",
+    "removed": "Member removed",
+    "removedDetail": "History is safe",
+    "removeFailed": "Could not remove the member"
+  },
+  "payment": {
+    "title": "Record a payment",
+    "description": "The due date moves forward from {date} by {months, plural, one {# month} other {# months}}.",
+    "plan": "Plan",
+    "months": "Months",
+    "amount": "Amount (₹)",
+    "amountPlaceholder": "400",
+    "method": "Payment method",
+    "confirm": "Confirm payment",
+    "recorded": "Payment recorded",
+    "recordedDetail": "The due date has moved forward",
+    "failed": "Could not record the payment"
+  },
+  "reminders": {
+    "title": "Reminders",
+    "subtitle": "Tap, WhatsApp opens, the message is already written.",
+    "filterAll": "All",
+    "filterOverdue": "Overdue",
+    "filterDueSoon": "Due soon",
+    "empty": "No reminders pending",
+    "emptyDetail": "Everyone's fees are up to date.",
+    "send": "Send on WhatsApp",
+    "sendAgain": "Send again",
+    "overdueBadge": "{days}d overdue",
+    "dueSoonBadge": "Due soon",
+    "lastReminder": "Last reminder {when}",
+    "logged": "Reminder logged",
+    "logFailed": "Could not record the reminder"
+  },
+  "settings": {
+    "title": "Settings",
+    "reminderDays": "Days before the due date",
+    "reminderDaysHint": "A member shows as \"due soon\" this many days before their due date.",
+    "saved": "Settings saved",
+    "saveFailed": "Could not save settings",
+    "trialTill": "Trial till {date}",
+    "signOut": "Sign out",
+    "appLanguage": "App language",
+    "appLanguageHint": "Changes what you see in this app. Members are not affected.",
+    "messageLanguage": "Reminder message language",
+    "messageLanguageHint": "The language of the WhatsApp message your members receive."
+  },
+  "feePlans": {
+    "title": "Fee plans",
+    "description": "Enter each price once, then just tap it when adding a member or taking a payment. Bundles can be cheaper — for example 1 month ₹400, 2 months ₹700.",
+    "empty": "No plans yet. Add one below.",
+    "months": "Months",
+    "monthsPlaceholder": "2",
+    "amount": "Amount (₹)",
+    "amountPlaceholder": "700",
+    "add": "Add plan",
+    "added": "Plan added",
+    "addFailed": "Could not add the plan",
+    "deleteLabel": "Delete the {months} month plan"
+  },
+  "language": {
+    "en": "English",
+    "hi-Latn": "Hinglish"
+  },
+  "dueStatus": {
+    "overdue": "Overdue",
+    "due_soon": "Due soon",
+    "upcoming": "Upcoming",
+    "overdueShort": "{days}d"
+  }
+}

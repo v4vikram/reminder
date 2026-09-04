@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { CheckIcon, MessageCircleIcon } from "lucide-react";
 import { formatDate, formatPhone, formatRelativeDate, formatRupees } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ export function PendingReminderCard({
   onSend: (item: PendingReminder) => void;
   sending: boolean;
 }) {
+  const t = useTranslations("reminders");
+  const tm = useTranslations("members");
   const { member } = item;
   const { pending } = member;
 
@@ -29,8 +32,8 @@ export function PendingReminderCard({
           </div>
           <Badge variant={member.dueStatus === "overdue" ? "destructive" : "default"}>
             {member.dueStatus === "overdue"
-              ? `${member.daysOverdue}d overdue`
-              : "Due soon"}
+              ? t("overdueBadge", { days: member.daysOverdue })
+              : t("dueSoonBadge")}
           </Badge>
         </div>
 
@@ -39,7 +42,7 @@ export function PendingReminderCard({
              covers matter more than the next due date on its own. */
           <div className="tabular space-y-0.5 rounded-md bg-destructive/5 px-3 py-2">
             <p className="text-sm font-medium text-destructive">
-              {pending.months} {pending.months === 1 ? "month" : "months"} pending
+              {tm("pending", { count: pending.months })}
               {pending.amount !== null ? ` · ${formatRupees(pending.amount)}` : ""}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -49,7 +52,7 @@ export function PendingReminderCard({
         ) : (
           <div className="tabular flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              Due {formatDate(member.nextDueDate)}
+              {tm("due", { date: formatDate(member.nextDueDate) })}
             </span>
             {member.feeAmount !== null ? (
               <span className="font-medium">{formatRupees(member.feeAmount)}</span>
@@ -69,13 +72,13 @@ export function PendingReminderCard({
           className="h-12 w-full"
         >
           <MessageCircleIcon className="size-4" />
-          {item.lastRemindedAt ? "Dobara bhejo" : "WhatsApp pe bhejo"}
+          {item.lastRemindedAt ? t("sendAgain") : t("send")}
         </Button>
 
         {item.lastRemindedAt ? (
           <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
             <CheckIcon className="size-3" />
-            Last reminder {formatRelativeDate(item.lastRemindedAt)}
+            {t("lastReminder", { when: formatRelativeDate(item.lastRemindedAt) })}
           </p>
         ) : null}
       </CardContent>

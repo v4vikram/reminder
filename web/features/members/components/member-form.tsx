@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api-client";
 import { formatRupees } from "@/lib/format";
 import { useFeePlans } from "@/features/fee-plans/queries";
@@ -57,6 +58,8 @@ export function MemberForm({
   error: unknown;
 }) {
   const { data: plans } = useFeePlans(gymId);
+  const t = useTranslations("memberForm");
+  const tc = useTranslations("common");
 
   const [form, setForm] = useState({
     name: "",
@@ -112,12 +115,12 @@ export function MemberForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="name">Naam</Label>
+        <Label htmlFor="name">{t("name")}</Label>
         <Input
           id="name"
           value={form.name}
           onChange={(e) => set("name", e.target.value)}
-          placeholder="Rahul Sharma"
+          placeholder={t("namePlaceholder")}
           autoFocus
           required
           className="h-12 text-base"
@@ -126,25 +129,26 @@ export function MemberForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phone">WhatsApp number</Label>
+        <Label htmlFor="phone">{t("phone")}</Label>
         {/* inputMode rather than type="tel": it raises the numeric keypad while
             still accepting +, spaces and dashes, which the API normalises. */}
         <Input
           id="phone"
           value={form.phone}
           onChange={(e) => set("phone", e.target.value)}
-          placeholder="98765 43210"
+          placeholder={t("phonePlaceholder")}
           inputMode="tel"
           required
           className="h-12 text-base"
         />
         {errors.phone ? <p className="text-sm text-destructive">{errors.phone}</p> : null}
-        <p className="text-xs text-muted-foreground">Isi number pe reminder jayega.</p>
+        <p className="text-xs text-muted-foreground">{t("phoneHint")}</p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="fee">
-          Monthly fees <span className="text-muted-foreground">(optional)</span>
+          {t("monthlyFee")}{" "}
+          <span className="text-muted-foreground">{tc("optional")}</span>
         </Label>
         {monthlyRates.length > 0 ? (
           <div className="flex flex-wrap gap-2 pb-1">
@@ -165,7 +169,7 @@ export function MemberForm({
           id="fee"
           value={form.feeAmount}
           onChange={(e) => set("feeAmount", e.target.value.replace(/[^0-9]/g, ""))}
-          placeholder="500"
+          placeholder={t("feePlaceholder")}
           inputMode="numeric"
           className="tabular h-12 text-base"
         />
@@ -173,15 +177,15 @@ export function MemberForm({
           <p className="text-sm text-destructive">{errors.feeAmount}</p>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          Abhi tay nahi hua? Khaali chhod do — pehli payment ke waqt bhar sakte ho.
+          {t("feeHint")}
         </p>
       </div>
 
       <div className="space-y-3 rounded-lg border p-3">
         <div>
-          <Label>Fees kis period ki hai</Label>
+          <Label>{t("periodTitle")}</Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            End date hi agli due date banegi.
+            {t("periodHint")}
           </p>
         </div>
 
@@ -194,7 +198,7 @@ export function MemberForm({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="joinDate" className="text-xs text-muted-foreground">
-              Start
+              {t("start")}
             </Label>
             <Input
               id="joinDate"
@@ -207,7 +211,7 @@ export function MemberForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="nextDueDate" className="text-xs text-muted-foreground">
-              End (next due)
+              {t("end")}
             </Label>
             <Input
               id="nextDueDate"
@@ -229,7 +233,8 @@ export function MemberForm({
 
       <div className="space-y-2">
         <Label htmlFor="notes">
-          Notes <span className="text-muted-foreground">(optional)</span>
+          {t("notes")}{" "}
+          <span className="text-muted-foreground">{tc("optional")}</span>
         </Label>
         <Textarea
           id="notes"
@@ -247,7 +252,7 @@ export function MemberForm({
         disabled={submitting || !canSubmit}
       >
         {submitting ? <Spinner className="size-4" /> : null}
-        Member add karo
+        {t("submit")}
       </Button>
     </form>
   );

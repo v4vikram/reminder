@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { formatRupees } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import type { FeePlan } from "../types";
@@ -22,6 +23,8 @@ export function PlanPicker({
   selectedMonths?: number;
   onSelect: (plan: FeePlan) => void;
 }) {
+  const t = useTranslations("common");
+
   if (plans.length === 0) return null;
 
   return (
@@ -38,7 +41,7 @@ export function PlanPicker({
             {formatRupees(plan.amount)}
           </span>
           <span className="text-[11px] font-normal opacity-70">
-            {plan.months} {plan.months === 1 ? "month" : "months"}
+            {t("months", { count: plan.months })}
           </span>
         </Button>
       ))}
@@ -62,6 +65,7 @@ export function DurationPicker({
   selectedMonths?: number;
   onSelect: (months: number) => void;
 }) {
+  const t = useTranslations("common");
   const durations = plans.length > 0 ? plans.map((p) => p.months) : [1, 2, 3];
 
   return (
@@ -74,7 +78,7 @@ export function DurationPicker({
           onClick={() => onSelect(months)}
           className="h-11 flex-1 basis-20"
         >
-          {months} {months === 1 ? "month" : "months"}
+          {t("months", { count: months })}
         </Button>
       ))}
     </div>

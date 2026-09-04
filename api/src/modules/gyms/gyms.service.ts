@@ -12,6 +12,7 @@ export interface GymResponse {
   monthlyPrice: number | null;
   trialEndsAt: string | null;
   reminderDaysBefore: number;
+  messageLanguage: Gym["messageLanguage"];
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +27,7 @@ export function toResponse(gym: Gym): GymResponse {
     monthlyPrice: gym.monthlyPrice === null ? null : Number(gym.monthlyPrice),
     trialEndsAt: gym.trialEndsAt?.toISOString() ?? null,
     reminderDaysBefore: gym.reminderDaysBefore,
+    messageLanguage: gym.messageLanguage,
     createdAt: gym.createdAt.toISOString(),
     updatedAt: gym.updatedAt.toISOString(),
   };
@@ -74,6 +76,9 @@ export async function updateGym(gym: Gym, input: UpdateGymInput): Promise<GymRes
       ...(input.address !== undefined ? { address: input.address } : {}),
       ...(input.reminderDaysBefore !== undefined
         ? { reminderDaysBefore: input.reminderDaysBefore }
+        : {}),
+      ...(input.messageLanguage !== undefined
+        ? { messageLanguage: input.messageLanguage }
         : {}),
     },
   });

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { useSession } from "@/features/auth/queries";
@@ -16,20 +17,21 @@ export default function NewMemberPage() {
   const router = useRouter();
   const gymId = activeGym!.id;
   const createMember = useCreateMember(gymId);
+  const t = useTranslations("memberForm");
 
   return (
     <div className="px-4 pt-6">
       <header className="mb-5 flex items-center gap-2">
         <Button
           nativeButton={false}
-          render={<Link href="/members" aria-label="Back to members" />}
+          render={<Link href="/members" aria-label={t("title")} />}
           variant="ghost"
           size="icon"
           className="size-11 shrink-0"
         >
           <ChevronLeftIcon className="size-5" />
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight">Naya member</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
       </header>
 
       <Card>
@@ -41,7 +43,7 @@ export default function NewMemberPage() {
             onSubmit={(input) =>
               createMember.mutate(input, {
                 onSuccess: () => {
-                  notify.success("Member added");
+                  notify.success(t("added"));
                   router.replace("/members");
                 },
                 onError: (err) => {

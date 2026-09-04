@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/features/auth/store";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,6 +18,8 @@ import { Spinner } from "@/components/ui/spinner";
 export default function AuthCallbackPage() {
   const router = useRouter();
   const signIn = useAuthStore((s) => s.signIn);
+  const t = useTranslations("callback");
+  const tc = useTranslations("common");
   const [error, setError] = useState<string | null>(null);
 
   // React runs effects twice in development. Without this the fragment has
@@ -30,7 +33,7 @@ export default function AuthCallbackPage() {
 
     async function completeSignIn() {
       const token = new URLSearchParams(window.location.hash.slice(1)).get("token");
-      if (!token) throw new Error("Sign-in did not return a token.");
+      if (!token) throw new Error("missing-token");
 
       signIn(token);
       // Drop the token from the address bar so it is not left in history.
@@ -41,15 +44,19 @@ export default function AuthCallbackPage() {
     // setError lives in the rejection callback, not the effect body, so it
     // cannot cause a cascading render on mount.
     void completeSignIn().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "Sign-in failed.");
+      setError(err instanceof Error && err.message === "missing-token" ? "noToken" : "failed");
     });
   }, [signIn, router]);
 
   if (error) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-sm text-muted-foreground">{error}</p>
-        <Button nativeButton={false} render={<Link href="/login" />}>Try again</Button>
+        <p className="text-sm text-muted-foreground">
+          {error === "noToken" ? t("noToken") : t("failed")}
+        </p>
+        <Button nativeButton={false} render={<Link href="/login" />}>
+          {tc("tryAgain")}
+        </Button>
       </main>
     );
   }
@@ -57,7 +64,7 @@ export default function AuthCallbackPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-3">
       <Spinner className="size-8 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">Signing you in…</p>
+      <p className="text-sm text-muted-foreground">{t("signingIn")}</p>
     </main>
   );
 }

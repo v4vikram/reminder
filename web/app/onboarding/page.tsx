@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { useSession } from "@/features/auth/queries";
@@ -16,6 +17,8 @@ export default function OnboardingPage() {
   const { status, gyms } = useSession();
   const router = useRouter();
   const createGym = useCreateGym();
+  const t = useTranslations("onboarding");
+  const tc = useTranslations("common");
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -38,9 +41,7 @@ export default function OnboardingPage() {
           if (err instanceof ApiError && err.details.length > 0) {
             setErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
           } else {
-            notify.error(
-              err instanceof ApiError ? err.message : "Could not create the gym",
-            );
+            notify.error(t("createFailed"));
           }
         },
       },
@@ -60,15 +61,13 @@ export default function OnboardingPage() {
       <div className="mx-auto w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle>Apna gym add karo</CardTitle>
-            <CardDescription>
-              Ek baar ka setup. Iske baad members add karna shuru kar sakte ho.
-            </CardDescription>
+            <CardTitle>{t("title")}</CardTitle>
+            <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Gym ka naam</Label>
+                <Label htmlFor="name">{t("gymName")}</Label>
                 <Input
                   id="name"
                   value={name}
@@ -83,7 +82,8 @@ export default function OnboardingPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">
-                  Gym ka phone <span className="text-muted-foreground">(optional)</span>
+                  {t("gymPhone")}{" "}
+                  <span className="text-muted-foreground">{tc("optional")}</span>
                 </Label>
                 <Input
                   id="phone"
@@ -103,7 +103,7 @@ export default function OnboardingPage() {
                 disabled={createGym.isPending || name.trim().length < 2}
               >
                 {createGym.isPending ? <Spinner className="size-4" /> : null}
-                Continue
+                {t("continue")}
               </Button>
             </form>
           </CardContent>

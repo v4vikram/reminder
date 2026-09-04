@@ -12,6 +12,8 @@ export const updateGymSchema = z
     phone: z.string().trim().min(1),
     address: z.string().trim().max(300),
     reminderDaysBefore: z.coerce.number().int().min(0).max(30),
+    /** Language of the WhatsApp text members receive - not the owner UI. */
+    messageLanguage: z.enum(["EN", "HI_LATN"]),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {

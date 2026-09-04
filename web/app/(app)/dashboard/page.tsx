@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AlertTriangleIcon, BellIcon, CalendarClockIcon, UsersIcon } from "lucide-react";
 import { formatRupees } from "@/lib/format";
 import { useSession } from "@/features/auth/queries";
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const { activeGym, user } = useSession();
   const gymId = activeGym!.id;
   const { data, error, isPending } = useDashboardSummary(gymId);
+  const t = useTranslations("dashboard");
 
   const needsAttention = (data?.overdue ?? 0) + (data?.dueSoon ?? 0);
 
@@ -22,7 +24,8 @@ export default function DashboardPage() {
     <div className="space-y-5 px-4 pt-6">
       <header>
         <p className="text-sm text-muted-foreground">
-          Namaste{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+          {t("greeting")}
+          {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
         </p>
         <h1 className="text-xl font-semibold tracking-tight">{activeGym!.name}</h1>
       </header>
@@ -30,7 +33,7 @@ export default function DashboardPage() {
       {error ? (
         <Alert variant="destructive">
           <AlertTriangleIcon />
-          <AlertTitle>Could not load the dashboard</AlertTitle>
+          <AlertTitle>{t("loadFailed")}</AlertTitle>
           <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       ) : null}
@@ -41,17 +44,19 @@ export default function DashboardPage() {
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex items-center justify-between gap-3 py-4">
             <div>
-              <p className="font-medium">
-                {needsAttention} {needsAttention === 1 ? "member" : "members"} ko
-                reminder bhejna hai
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {data!.overdue} overdue · {data!.dueSoon} due soon
+              <p className="font-medium">{t("needAttention", { count: needsAttention })}</p>
+              <p className="tabular text-sm text-muted-foreground">
+                {t("breakdown", { overdue: data!.overdue, dueSoon: data!.dueSoon })}
               </p>
             </div>
-            <Button nativeButton={false} render={<Link href="/reminders" />} size="sm" className="h-11 shrink-0">
+            <Button
+              nativeButton={false}
+              render={<Link href="/reminders" />}
+              size="sm"
+              className="h-11 shrink-0"
+            >
               <BellIcon className="size-4" />
-              Bhejo
+              {t("send")}
             </Button>
           </CardContent>
         </Card>
@@ -59,26 +64,26 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard
-          label="Overdue"
+          label={t("overdue")}
           value={data?.overdue}
           loading={isPending}
           icon={<AlertTriangleIcon className="size-4" />}
           alarming
         />
         <StatCard
-          label="Due soon"
+          label={t("dueSoon")}
           value={data?.dueSoon}
           loading={isPending}
           icon={<CalendarClockIcon className="size-4" />}
         />
         <StatCard
-          label="Active members"
+          label={t("activeMembers")}
           value={data?.activeMembers}
           loading={isPending}
           icon={<UsersIcon className="size-4" />}
         />
         <StatCard
-          label="Pending amount"
+          label={t("pendingAmount")}
           value={data ? formatRupees(data.pendingAmount) : undefined}
           loading={isPending}
         />
@@ -86,11 +91,11 @@ export default function DashboardPage() {
 
       <Card>
         <CardContent className="py-4">
-          <p className="text-sm text-muted-foreground">Is mahine collect hua</p>
+          <p className="text-sm text-muted-foreground">{t("collectedThisMonth")}</p>
           {isPending ? (
             <Skeleton className="mt-1 h-8 w-32" />
           ) : (
-            <p className="text-2xl font-semibold">
+            <p className="tabular text-2xl font-semibold">
               {formatRupees(data?.collectedThisMonth ?? 0)}
             </p>
           )}
@@ -104,7 +109,7 @@ export default function DashboardPage() {
         size="lg"
         className="h-12 w-full"
       >
-        Saare members dekho
+        {t("seeAllMembers")}
       </Button>
     </div>
   );

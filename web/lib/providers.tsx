@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { makeQueryClient } from "./query-client";
+import { LocaleProvider } from "@/features/locale/provider";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -13,8 +14,10 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider delay={300}>{children}</TooltipProvider>
-      <Toaster />
+      <LocaleProvider>
+        <TooltipProvider delay={300}>{children}</TooltipProvider>
+        <Toaster />
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { formatDate, formatRupees } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { dueStatusBadge, dueStatusVariant } from "../utils";
+import { dueStatusVariant } from "../utils";
 import type { Member } from "../types";
 
 export function MemberCard({ member }: { member: Member }) {
+  const t = useTranslations("members");
+  const ts = useTranslations("dueStatus");
   const { pending } = member;
 
   return (
@@ -26,7 +29,7 @@ export function MemberCard({ member }: { member: Member }) {
                   fee said neither.
                 */}
                 <p className="tabular text-sm font-medium text-destructive">
-                  {pending.months} {pending.months === 1 ? "month" : "months"} pending
+                  {t("pending", { count: pending.months })}
                   {pending.amount !== null ? ` · ${formatRupees(pending.amount)}` : ""}
                 </p>
                 <p className="tabular text-xs text-muted-foreground">
@@ -35,14 +38,16 @@ export function MemberCard({ member }: { member: Member }) {
               </>
             ) : (
               <p className="tabular text-sm text-muted-foreground">
-                Due {formatDate(member.nextDueDate)}
+                {t("due", { date: formatDate(member.nextDueDate) })}
                 {member.feeAmount !== null ? ` · ${formatRupees(member.feeAmount)}` : ""}
               </p>
             )}
           </div>
 
           <Badge variant={dueStatusVariant[member.dueStatus]} className="shrink-0">
-            {dueStatusBadge(member.dueStatus, member.daysOverdue)}
+            {member.dueStatus === "overdue"
+              ? ts("overdueShort", { days: member.daysOverdue })
+              : ts(member.dueStatus)}
           </Badge>
         </CardContent>
       </Card>

@@ -22,6 +22,16 @@ enum GymPlan {
   PAID
 }
 
+/// Language of the WhatsApp reminder that members receive.
+///
+/// Separate from the owner interface language, which is a per-device client
+/// preference: the owner may read the app in English while their members are
+/// better served in Hinglish. HI_LATN is Hindi in Latin script.
+enum MessageLanguage {
+  EN
+  HI_LATN
+}
+
 enum MemberStatus {
   ACTIVE
   INACTIVE
@@ -79,11 +89,13 @@ model Gym {
 
   // Plan and settings live as data, not hardcoded in application code, so a
   // tier or trial change is an UPDATE rather than a deploy.
-  plan               GymPlan   @default(TRIAL)
-  monthlyPrice       Decimal?  @db.Decimal(10, 2)
+  plan               GymPlan         @default(TRIAL)
+  monthlyPrice       Decimal?        @db.Decimal(10, 2)
   trialEndsAt        DateTime?
   /// How many days before the due date a member counts as "due soon".
-  reminderDaysBefore Int       @default(3)
+  reminderDaysBefore Int             @default(3)
+  /// Language of the reminder text sent to this gym's members.
+  messageLanguage    MessageLanguage @default(HI_LATN)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

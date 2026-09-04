@@ -4,16 +4,19 @@ import { pendingPeriod, today } from "../../shared/utils/dates.ts";
 /**
  * The reminder message sent to gym members.
  *
- * Note the language split: code and API errors are English (developer-facing),
- * but this string is read by gym members in India, so it is Hinglish. It is the
- * product's user-facing copy, not developer output.
+ * Two things are worth knowing about the language here:
  *
- * The template lives on the server, not in the client, so changing the wording
- * is one deploy that affects every caller - and so Phase 1's cron reuses exactly
- * the same text as the manual flow. See docs/api-contract.md §4.4.
+ * - This copy is read by gym *members*, not the owner, so its language follows
+ *   `gym.messageLanguage` rather than whatever the owner set their interface to.
+ *   An owner may well read the app in English while their members are better
+ *   served in Hinglish.
+ * - It is deliberately not in the next-intl bundles. Those ship to the browser
+ *   and are chosen per device; this text is produced on the server so Phase 1's
+ *   cron sends exactly the same wording as the manual flow
+ *   (docs/api-contract.md §4.4).
  *
  * Phase 1 will move this into a per-gym MessageTemplate table
- * (docs/schema.md §7); a module-level constant is enough while it is fixed.
+ * (docs/schema.md §7); a module-level function is enough while it is fixed.
  */
 
 function formatAmount(amount: number): string {
@@ -29,12 +32,50 @@ function formatDate(date: Date): string {
   });
 }
 
+interface Copy {
+  /** Several months behind: names the span and the total. */
+  arrears(name: string, gym: string, months: number, span: string, total: string | null): string;
+  /** One period behind. */
+  overdue(name: string, gym: string, amount: string, date: string): string;
+  /** Not yet late. */
+  upcoming(name: string, gym: string, amount: string, date: string): string;
+}
+
+const COPY: Record<Gym["messageLanguage"], Copy> = {
+  HI_LATN: {
+    arrears: (name, gym, months, span, total) =>
+      `Namaste ${name}, ${gym} ki membership fees ${months} mahine se pending hai ` +
+      `(${span})${total === null ? "" : ` - kul ${total}`}. ` +
+      `Kripya jaldi jama karein. Dhanyavaad!`,
+    overdue: (name, gym, amount, date) =>
+      `Namaste ${name}, ${gym} ki membership fees${amount} ${date} ko due thi aur ` +
+      `abhi tak pending hai. Kripya jaldi jama karein. Dhanyavaad!`,
+    upcoming: (name, gym, amount, date) =>
+      `Namaste ${name}, ${gym} ki membership fees${amount} ${date} ko due hai. ` +
+      `Kripya time pe jama karein. Dhanyavaad!`,
+  },
+
+  EN: {
+    arrears: (name, gym, months, span, total) =>
+      `Hello ${name}, your ${gym} membership fees have been pending for ` +
+      `${months} months (${span})${total === null ? "" : ` - ${total} in total`}. ` +
+      `Please pay at your earliest. Thank you!`,
+    overdue: (name, gym, amount, date) =>
+      `Hello ${name}, your ${gym} membership fees${amount} were due on ${date} ` +
+      `and are still pending. Please pay at your earliest. Thank you!`,
+    upcoming: (name, gym, amount, date) =>
+      `Hello ${name}, your ${gym} membership fees${amount} are due on ${date}. ` +
+      `Please pay on time. Thank you!`,
+  },
+};
+
 export function buildReminderMessage(
   member: Member,
   gym: Gym,
   dueDate: Date,
   now: Date = today(),
 ): string {
+  const copy = COPY[gym.messageLanguage];
   const fee = member.feeAmount === null ? null : Number(member.feeAmount);
   const pending = pendingPeriod(dueDate, now);
 
@@ -42,31 +83,21 @@ export function buildReminderMessage(
   // and one due date understated the debt and gave the member no idea which
   // period was outstanding.
   if (pending && pending.months > 1) {
-    const total = fee === null ? null : fee * pending.months;
-    const span = `${formatDate(pending.from)} se ${formatDate(pending.to)} tak`;
+    const total = fee === null ? null : formatAmount(fee * pending.months);
+    const span =
+      gym.messageLanguage === "EN"
+        ? `${formatDate(pending.from)} to ${formatDate(pending.to)}`
+        : `${formatDate(pending.from)} se ${formatDate(pending.to)} tak`;
 
-    return (
-      `Namaste ${member.name}, ${gym.name} ki membership fees ` +
-      `${pending.months} mahine se pending hai (${span})` +
-      `${total === null ? "" : ` - kul ${formatAmount(total)}`}. ` +
-      `Kripya jaldi jama karein. Dhanyavaad!`
-    );
+    return copy.arrears(member.name, gym.name, pending.months, span, total);
   }
 
   const amountPart = fee === null ? "" : ` ${formatAmount(fee)}`;
+  const date = formatDate(dueDate);
 
-  if (pending) {
-    return (
-      `Namaste ${member.name}, ${gym.name} ki membership fees${amountPart} ` +
-      `${formatDate(dueDate)} ko due thi aur abhi tak pending hai. ` +
-      `Kripya jaldi jama karein. Dhanyavaad!`
-    );
-  }
-
-  return (
-    `Namaste ${member.name}, ${gym.name} ki membership fees${amountPart} ` +
-    `${formatDate(dueDate)} ko due hai. Kripya time pe jama karein. Dhanyavaad!`
-  );
+  return pending
+    ? copy.overdue(member.name, gym.name, amountPart, date)
+    : copy.upcoming(member.name, gym.name, amountPart, date);
 }
 
 /**

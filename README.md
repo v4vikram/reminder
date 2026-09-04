@@ -27,6 +27,7 @@ real database except the live Google redirect itself, which needs a browser.
 | Gyms module | Done - onboarding and settings |
 | Authentication | Google OAuth + JWT; verified except the live Google round trip |
 | Dashboard summary | Done |
+| Languages | English and Hinglish; owner UI and member message set separately |
 | Frontend (web/) | Screens built: login, onboarding, dashboard, members, reminders, settings |
 
 ## Stack
@@ -34,7 +35,7 @@ real database except the live Google redirect itself, which needs a browser.
 - **Backend** - Express 5, TypeScript, modular architecture
 - **Database** - PostgreSQL on Neon, Prisma 7 with the `adapter-pg` driver adapter
 - **Frontend** - Next.js 16 (App Router), React 19, Tailwind 4, shadcn/ui on Base UI,
-  React Query (server state), Zustand (client state), Axios
+  React Query (server state), Zustand (client state), Axios, next-intl
 
 Every non-obvious choice is recorded in [docs/adr](docs/adr/README.md).
 
@@ -89,6 +90,7 @@ api/
 web/
   app/             thin route files; (app)/ is the authenticated shell
   features/        one folder per feature: api, queries, types, utils, components
+  messages/        en.json and hi-Latn.json translation bundles
   components/ui/   shadcn components
   lib/             axios client, query client, shared formatters
 docs/

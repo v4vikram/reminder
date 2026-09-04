@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { googleSignInUrl } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button";
  * The browser has to navigate for the state cookie to be set and returned.
  */
 export function GoogleSignInButton() {
+  const t = useTranslations("login");
+
   return (
     <Button
       nativeButton={false}
@@ -16,7 +19,7 @@ export function GoogleSignInButton() {
       className="h-12 w-full text-base"
     >
       <GoogleMark />
-      Continue with Google
+      {t("continueWithGoogle")}
     </Button>
   );
 }
